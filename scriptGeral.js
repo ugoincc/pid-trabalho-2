@@ -20,9 +20,10 @@ function converte_escala_de_cinza(dadosImagem) {
   return dadosCinza;
 }
 
+
 // Funcao de limiarizacao simples
-function limiarizacao_simples(dadosCinza, limiar = 0.15) {
-  const valorLimiar = Math.round(limiar * 255);
+function limiarizacao_simples(dadosCinza, limiar = 14) {
+  const valorLimiar = Math.round(limiar);
   const resultado = new Uint8ClampedArray(dadosCinza.length);
 
   for (let i = 0; i < dadosCinza.length; i++) {
@@ -98,7 +99,6 @@ function aplicarErosao(imagem_dilatada, largura, altura) {
   return imagem_fechamento;
 }
 
-
 function aplicarDilatacao(imagemCinza, largura, altura) {
   const resultado = new Uint8Array(largura * altura);
 
@@ -146,6 +146,72 @@ export function transformadaBottomHat (dadosCinza, largura, altura){
   return resultado;    
 }
 
+//---------------------------------------------------------------//
+//-------------------------Segundo Fluxo-------------------------//
+//---------------------------------------------------------------//
+
+// Função para converter RGB para HSV
+function rgbParaHsv(r, g, b) {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+
+  let h = 0;
+  if (delta !== 0) {
+    if (max === r) {
+      h = 60 * ((g - b) / delta);
+      if (h < 0) h += 360;
+    } else if (max === g) {
+      h = 60 * ((b - r) / delta + 2);
+    } else {
+      h = 60 * ((r - g) / delta + 4);
+    }
+  }
+
+  const s = max === 0 ? 0 : delta / max;
+  const v = max;
+
+  return { h, s, v };
+}
+
+function aplicarHSV(dadosImagem, largura, altura, limiarS = 0.2, limiarV = 0.2) {
+  const dados = dadosImagem.data;
+  const resultado = new Uint8ClampedArray(largura * altura);
+
+  // Percorre cada pixel da imagem
+  for (let i = 0, j = 0; i < dados.length; i += 4, j++) {
+    const r = dados[i];
+    const g = dados[i + 1];
+    const b = dados[i + 2];
+
+    const { s, v } = rgbParaHsv(r, g, b);
+
+    // Marca como possível fissura pixels com baixa saturação e baixo valor (brilho)
+    if (s <= limiarS && v <= limiarV) {
+      resultado[j] = 0; // pixel destacado
+    } else {
+      resultado[j] = 255; // fundo
+    }
+  }
+
+  return resultado; // máscara binária 0 ou 255
+}
+
+function combinarImagens(dadosTransformadaHat, imagemResultante){
+  const resultado = new Uint8ClampedArray(dadosTransformadaHat.length);
+
+  for (let i = 0; i < dadosTransformadaHat.length; i++) {
+    resultado[i] = (dadosTransformadaHat[i] === 255 && imagemResultante[i] === 255) ? 255 : 0;
+  }
+
+  return resultado;
+}
+
+
 export function detectarFissura(){
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
@@ -161,7 +227,8 @@ export function detectarFissura(){
     contexto.drawImage(imagem, 0, 0);
 
     const dadosImagem = contexto.getImageData(0, 0, tela.width, tela.height);
-    const dados = dadosImagem.data;
+    const dadosImagemCopia = new ImageData(
+                  new Uint8ClampedArray(dadosImagem.data),largura, altura);
 
     // -------------------- Convertendo o vetor extraido para escala de cinza -------------------- //
     const dadosCinza = converte_escala_de_cinza(dadosImagem);
@@ -169,15 +236,22 @@ export function detectarFissura(){
     // -------------------- Aplicando a transformada de bottom hat ------------------------------ // 
     const dadosTransformadaHat = transformadaBottomHat(dadosCinza, largura, altura);
 
-    // -------------------- Aplicando limiarizacao a imagem --------------------- //
+    // -------------------- Aplicando limiarizacao a imagem ------------------------------------- //
     const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat);
+
+    // -------------------- Transformando a imagem original de RGB para HSV --------------------- //
+    const imagemHSV = aplicarHSV(dadosImagemCopia, largura, altura, 0.5, 0.5);
+
+    // -------------------- Combinando a imagem 1 (transformada de hat) e a imagem 2 (HSV) ------ //
+    //let imagemResultante = combinarImagens(dadosTransformadaHat, imagemHSV);
+    let imagemResultante = imagemHSV;
 
     // Converte para RGBA    
     const dadosRGBA = new Uint8ClampedArray(largura * altura * 4);
-    for (let i = 0; i < dadosLimiarizados.length; i++) {
-      dadosRGBA[i * 4 + 0] = dadosLimiarizados[i];
-      dadosRGBA[i * 4 + 1] = dadosLimiarizados[i];
-      dadosRGBA[i * 4 + 2] = dadosLimiarizados[i];
+    for (let i = 0; i < imagemResultante.length; i++) {
+      dadosRGBA[i * 4 + 0] = imagemResultante[i];
+      dadosRGBA[i * 4 + 1] = imagemResultante[i];
+      dadosRGBA[i * 4 + 2] = imagemResultante[i];
       dadosRGBA[i * 4 + 3] = 255;
     }
 
