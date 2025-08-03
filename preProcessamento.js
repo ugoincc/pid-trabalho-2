@@ -20,9 +20,8 @@ export function converte_escala_de_cinza(dadosImagem) {
   return dadosCinza;
 }
 
-
 // Funcao de limiarizacao simples
-function limiarizacao_simples(dadosCinza, limiar = 14) {
+export function limiarizacao_simples(dadosCinza, limiar = 14) {
   const valorLimiar = Math.round(limiar);
   const resultado = new Uint8ClampedArray(dadosCinza.length);
 
