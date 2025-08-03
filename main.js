@@ -18,7 +18,10 @@ export function handleImageFunction(selectedFunction) {
     case "fun2":
       detectarFissura();
       break;
+    case "fun3":
       
+      break;
+
       default:
       const msg = document.createElement("p");
       msg.textContent = "Nenhuma função selecionada.";
