@@ -45,9 +45,9 @@ export function reconhecerFissuras(imagemOriginal, imagemBinaria) {
 
   // Configuração fixa e simples
   const config = {
-    areaMinima: 30,
-    perimetroMinimo: 20,
-    aspectRatioMinimo: 2.0,
+    areaMinima: 1,
+    perimetroMinimo: 1,
+    aspectRatioMinimo: 1.0,
     desenharContornos: true,
     desenharNumeros: true,
     desenharEstatisticas: true
@@ -96,7 +96,7 @@ export function reconhecerFissuras(imagemOriginal, imagemBinaria) {
     const contornos = new cv.MatVector();
     const hierarquia = new cv.Mat();
     cv.findContours(imagemLimpa, contornos, hierarquia, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
+    console.log(`DEBUG: Total de contornos brutos encontrados: ${contornos.size()}`);
     // Analisar e filtrar contornos
     const fissuras = analisarContornos(contornos, config);
 
@@ -176,9 +176,9 @@ function analisarContornos(contornos, config) {
     const ehFissura = (
       area >= config.areaMinima &&
       perimetro >= config.perimetroMinimo &&
-      aspectRatio >= config.aspectRatioMinimo &&
-      extent < 0.5 &&  // Fissuras não preenchem completamente o bounding rect
-      solidez > 0.5    // Fissuras têm forma relativamente sólida
+      aspectRatio >= config.aspectRatioMinimo 
+      //extent < 0.5 &&  // Fissuras não preenchem completamente o bounding rect
+      //solidez > 0.5    // Fissuras têm forma relativamente sólida
     );
 
     if (ehFissura) {
@@ -245,9 +245,18 @@ function desenharFissuras(imagem, fissuras, config) {
 }
 
 // Função principal que integra com o preprocessamento
-export function reconhecimentoCompleto() {
+export async function reconhecimentoCompleto() {
   if (!curFile) {
     throw new Error('Nenhuma imagem carregada');
+  }
+
+  // AGUARDAR O CARREGAMENTO DO OPENCV PRIMEIRO
+  try {
+    await carregarOpenCV();
+    console.log('OpenCV carregado com sucesso');
+  } catch (error) {
+    console.error('Erro ao carregar OpenCV:', error);
+    throw new Error('Falha ao carregar OpenCV.js');
   }
 
   const tela = document.createElement("canvas");
@@ -300,17 +309,34 @@ export function reconhecimentoCompleto() {
         const imagemBinaria = new ImageData(dadosBinarios, largura, altura);
 
         // ========== RECONHECIMENTO COM OPENCV ==========
+        // Agora o OpenCV já está carregado
         const resultado = reconhecerFissuras(imagemOriginal, imagemBinaria);
 
-        // Exibir resultado
-        cv.imshow(tela, resultado.imagem);
-        preview.appendChild(tela);
+        // Criar nova tela para o resultado (cv.imshow pode alterar a tela original)
+        const telaResultado = document.createElement("canvas");
+        telaResultado.classList.add("styled-canva");
+        
+        // Exibir resultado na nova tela
+        cv.imshow(telaResultado, resultado.imagem);
+        
+        // Verificar se preview existe antes de tentar appendChild
+        if (preview && typeof preview.appendChild === 'function') {
+          preview.appendChild(telaResultado);
+        } else {
+          console.error('Elemento preview não encontrado ou inválido');
+          // Alternativa: anexar ao body ou outro container
+          document.body.appendChild(telaResultado);
+        }
 
         // Criar link de download
         const containerDownload = document.querySelector(".download-container");
-        containerDownload.innerHTML = "";
-        const linkDownload = createDownloadLink(tela, "fissuras_reconhecidas.png");
-        containerDownload.appendChild(linkDownload);
+        if (containerDownload) {
+          containerDownload.innerHTML = "";
+          const linkDownload = createDownloadLink(telaResultado, "fissuras_reconhecidas.png");
+          containerDownload.appendChild(linkDownload);
+        } else {
+          console.warn('Container de download não encontrado');
+        }
 
         // Log básico
         console.log('=== FISSURAS DETECTADAS ===');

@@ -69,6 +69,7 @@ function createDownloadLink(canvas, filename = "imagem.png") {
   downloadLink.textContent = "Download da Imagem";
   downloadLink.classList = "custom-button";
   downloadContainer.appendChild(downloadLink);
+  return downloadLink;
 }
 
 export {
