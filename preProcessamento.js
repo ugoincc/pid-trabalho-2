@@ -84,8 +84,8 @@ function aplicarErosao(imagem_dilatada, largura, altura) {
 
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
-          const vizinhoX = linha + dx;
-          const vizinhoY = coluna + dy;
+          const vizinhoX = coluna + dx;
+          const vizinhoY = linha + dy;
           const indice = vizinhoY * largura + vizinhoX;
           menor = Math.min(menor, imagem_copia[indice]);
         }
@@ -178,7 +178,7 @@ function rgbParaHsv(r, g, b) {
   return { h, s, v };
 }
 
-function aplicarHSV(dadosImagem, largura, altura, limiarS = 0.2, limiarV = 0.2) {
+function aplicarHSV(dadosImagem, largura, altura, limiarS = 0.5, limiarV = 0.5) {
   const dados = dadosImagem.data;
   const resultado = new Uint8ClampedArray(largura * altura);
 
@@ -201,25 +201,16 @@ function aplicarHSV(dadosImagem, largura, altura, limiarS = 0.2, limiarV = 0.2) 
   return resultado; // máscara binária 0 ou 255
 }
 
-function combinarImagens(dadosTransformadaHat, imagemHSV) {
-  const resultado = new Uint8ClampedArray(dadosTransformadaHat.length);
+function combinarImagens(dadosLimiarizados, imagemHSV) {
+  const resultado = new Uint8ClampedArray(dadosLimiarizados.length);
 
-  for (let i = 0; i < dadosTransformadaHat.length; i += 4) {
-    // Pegando canal R (ou G ou B, já que a máscara é binária)
-    const pixelHat = dadosTransformadaHat[i];
-    const pixelHSV = imagemHSV[i];
-
-    const valor = (pixelHat < 255 && pixelHSV < 255) ? 0 : 255;
-
-    resultado[i] = valor;     // R
-    resultado[i + 1] = valor; // G
-    resultado[i + 2] = valor; // B
-    resultado[i + 3] = 255;   // alpha
+  for (let i = 0; i < dadosLimiarizados.length; i++) {
+    // AND logico invertido para mascaras com 0 = fissura
+    resultado[i] = (dadosLimiarizados[i] === 0 && imagemHSV[i] === 0) ? 0 : 255;
   }
 
   return resultado;
 }
-
 export function detectarFissura(){
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
@@ -248,10 +239,10 @@ export function detectarFissura(){
     const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat);
 
     // -------------------- Transformando a imagem original de RGB para HSV --------------------- //
-    const imagemHSV = aplicarHSV(dadosImagemCopia, largura, altura, 0.5, 0.5);
+    const imagemHSV = aplicarHSV(dadosImagemCopia, largura, altura, 0.6, 0.5);
 
     // -------------------- Combinando a imagem 1 (transformada de hat) e a imagem 2 (HSV) ------ //
-    let imagemResultante = combinarImagens(dadosTransformadaHat, imagemHSV);    
+    let imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);    
 
     // Converte para RGBA    
     const dadosRGBA = new Uint8ClampedArray(largura * altura * 4);

@@ -2,7 +2,7 @@
 import {
   detectarFissura,
   escala_de_cinza,
-} from "./scriptGeral.js";
+} from "./preProcessamento.js";
 
 
 import "./common.js";
