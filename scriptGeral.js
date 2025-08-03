@@ -201,16 +201,24 @@ function aplicarHSV(dadosImagem, largura, altura, limiarS = 0.2, limiarV = 0.2) 
   return resultado; // máscara binária 0 ou 255
 }
 
-function combinarImagens(dadosTransformadaHat, imagemResultante){
+function combinarImagens(dadosTransformadaHat, imagemHSV) {
   const resultado = new Uint8ClampedArray(dadosTransformadaHat.length);
 
-  for (let i = 0; i < dadosTransformadaHat.length; i++) {
-    resultado[i] = (dadosTransformadaHat[i] === 255 && imagemResultante[i] === 255) ? 255 : 0;
+  for (let i = 0; i < dadosTransformadaHat.length; i += 4) {
+    // Pegando canal R (ou G ou B, já que a máscara é binária)
+    const pixelHat = dadosTransformadaHat[i];
+    const pixelHSV = imagemHSV[i];
+
+    const valor = (pixelHat < 255 && pixelHSV < 255) ? 0 : 255;
+
+    resultado[i] = valor;     // R
+    resultado[i + 1] = valor; // G
+    resultado[i + 2] = valor; // B
+    resultado[i + 3] = 255;   // alpha
   }
 
   return resultado;
 }
-
 
 export function detectarFissura(){
   const tela = document.createElement("canvas");
@@ -243,8 +251,7 @@ export function detectarFissura(){
     const imagemHSV = aplicarHSV(dadosImagemCopia, largura, altura, 0.5, 0.5);
 
     // -------------------- Combinando a imagem 1 (transformada de hat) e a imagem 2 (HSV) ------ //
-    //let imagemResultante = combinarImagens(dadosTransformadaHat, imagemHSV);
-    let imagemResultante = imagemHSV;
+    let imagemResultante = combinarImagens(dadosTransformadaHat, imagemHSV);    
 
     // Converte para RGBA    
     const dadosRGBA = new Uint8ClampedArray(largura * altura * 4);
