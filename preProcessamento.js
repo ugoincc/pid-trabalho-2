@@ -1,7 +1,7 @@
 import { curFile, preview, createDownloadLink } from "./common.js";
 
 // Funcao auxiliar para converter para escala de cinza usando formula luma
-function converte_escala_de_cinza(dadosImagem) {
+export function converte_escala_de_cinza(dadosImagem) {
   const dados = dadosImagem.data;
   const largura = dadosImagem.width;
   const altura = dadosImagem.height;
@@ -178,7 +178,7 @@ function rgbParaHsv(r, g, b) {
   return { h, s, v };
 }
 
-function aplicarHSV(dadosImagem, largura, altura, limiarS = 0.5, limiarV = 0.5) {
+export function aplicarHSV(dadosImagem, largura, altura, limiarS = 0.5, limiarV = 0.5) {
   const dados = dadosImagem.data;
   const resultado = new Uint8ClampedArray(largura * altura);
 
@@ -201,7 +201,7 @@ function aplicarHSV(dadosImagem, largura, altura, limiarS = 0.5, limiarV = 0.5) 
   return resultado; // máscara binária 0 ou 255
 }
 
-function combinarImagens(dadosLimiarizados, imagemHSV) {
+export function combinarImagens(dadosLimiarizados, imagemHSV) {
   const resultado = new Uint8ClampedArray(dadosLimiarizados.length);
 
   for (let i = 0; i < dadosLimiarizados.length; i++) {
@@ -239,7 +239,7 @@ export function detectarFissura(){
     const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat);
 
     // -------------------- Transformando a imagem original de RGB para HSV --------------------- //
-    const imagemHSV = aplicarHSV(dadosImagemCopia, largura, altura, 0.6, 0.5);
+    const imagemHSV = aplicarHSV(dadosImagemCopia, largura, altura, 0.6, 0.6);
 
     // -------------------- Combinando a imagem 1 (transformada de hat) e a imagem 2 (HSV) ------ //
     let imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);    

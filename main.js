@@ -4,6 +4,9 @@ import {
   escala_de_cinza,
 } from "./preProcessamento.js";
 
+import {
+  reconhecimentoCompleto,
+} from "./reconhecimentoDeFissura.js";
 
 import "./common.js";
 
@@ -19,9 +22,8 @@ export function handleImageFunction(selectedFunction) {
       detectarFissura();
       break;
     case "fun3":
-      
+      reconhecimentoCompleto();
       break;
-
       default:
       const msg = document.createElement("p");
       msg.textContent = "Nenhuma função selecionada.";

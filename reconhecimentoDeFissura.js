@@ -1,4 +1,5 @@
 import { curFile, preview, createDownloadLink } from "./common.js";
+
 import { 
   converte_escala_de_cinza, 
   transformadaBottomHat, 
@@ -36,20 +37,20 @@ export function carregarOpenCV() {
 }
 
 // Função principal para reconhecimento de fissuras usando OpenCV
-export function reconhecerFissuras(imagemOriginal, imagemBinaria, opcoes = {}) {
+export function reconhecerFissuras(imagemOriginal, imagemBinaria) {
   if (typeof cv === 'undefined') {
     console.error('OpenCV.js não está carregado');
     throw new Error('OpenCV não está disponível');
   }
 
+  // Configuração fixa e simples
   const config = {
-    areaMinima: opcoes.areaMinima || 30,
-    perimetroMinimo: opcoes.perimetroMinimo || 20,
-    aspectRatioMinimo: opcoes.aspectRatioMinimo || 2.0,
-    desenharContornos: opcoes.desenharContornos !== false,
-    desenharNumeros: opcoes.desenharNumeros !== false,
-    desenharEstatisticas: opcoes.desenharEstatisticas !== false,
-    ...opcoes
+    areaMinima: 30,
+    perimetroMinimo: 20,
+    aspectRatioMinimo: 2.0,
+    desenharContornos: true,
+    desenharNumeros: true,
+    desenharEstatisticas: true
   };
 
   try {
@@ -109,8 +110,7 @@ export function reconhecerFissuras(imagemOriginal, imagemBinaria, opcoes = {}) {
     // Preparar dados de retorno
     const dadosRetorno = {
       imagem: resultado,
-      fissuras: fissuras,
-      parametros: config
+      fissuras: fissuras
     };
 
     // Limpeza de memória
@@ -244,70 +244,8 @@ function desenharFissuras(imagem, fissuras, config) {
   });
 }
 
-// Função para desenhar informações básicas na imagem
-function desenharInformacoes(imagem, fissuras) {
-  const texto = `Fissuras detectadas: ${fissuras.length}`;
-  
-  // Desenhar fundo semitransparente
-  const rect1 = new cv.Point(5, 5);
-  const rect2 = new cv.Point(250, 40);
-  cv.rectangle(imagem, rect1, rect2, new cv.Scalar(0, 0, 0), -1);
-
-  // Desenhar texto
-  const posicao = new cv.Point(10, 25);
-  cv.putText(imagem, texto, posicao,
-            cv.FONT_HERSHEY_SIMPLEX, 0.6, new cv.Scalar(255, 255, 255), 2);
-}
-
-// Função para calcular estatísticas das fissuras
-function calcularEstatisticas(fissuras) {
-  const stats = {
-    quantidade: fissuras.length,
-    areaTotal: 0,
-    comprimentoTotal: 0,
-    perimetroTotal: 0,
-    maiorArea: 0,
-    menorArea: Infinity,
-    areaMedia: 0,
-    fissurasMaiores: 0, // Fissuras com área > média
-    distribuicaoTamanhos: {
-      pequenas: 0,  // < 100 px²
-      medias: 0,    // 100-500 px²
-      grandes: 0    // > 500 px²
-    }
-  };
-
-  if (fissuras.length === 0) {
-    stats.menorArea = 0;
-    return stats;
-  }
-
-  // Calcular totais
-  fissuras.forEach(fissura => {
-    stats.areaTotal += fissura.area;
-    stats.comprimentoTotal += fissura.comprimento;
-    stats.perimetroTotal += fissura.perimetro;
-    stats.maiorArea = Math.max(stats.maiorArea, fissura.area);
-    stats.menorArea = Math.min(stats.menorArea, fissura.area);
-
-    // Classificar por tamanho
-    if (fissura.area < 100) {
-      stats.distribuicaoTamanhos.pequenas++;
-    } else if (fissura.area <= 500) {
-      stats.distribuicaoTamanhos.medias++;
-    } else {
-      stats.distribuicaoTamanhos.grandes++;
-    }
-  });
-
-  stats.areaMedia = Math.round(stats.areaTotal / fissuras.length);
-  stats.fissurasMaiores = fissuras.filter(f => f.area > stats.areaMedia).length;
-
-  return stats;
-}
-
 // Função principal que integra com o preprocessamento
-export function reconhecimentoCompleto(opcoes = {}) {
+export function reconhecimentoCompleto() {
   if (!curFile) {
     throw new Error('Nenhuma imagem carregada');
   }
@@ -362,7 +300,7 @@ export function reconhecimentoCompleto(opcoes = {}) {
         const imagemBinaria = new ImageData(dadosBinarios, largura, altura);
 
         // ========== RECONHECIMENTO COM OPENCV ==========
-        const resultado = reconhecerFissuras(imagemOriginal, imagemBinaria, opcoes);
+        const resultado = reconhecerFissuras(imagemOriginal, imagemBinaria);
 
         // Exibir resultado
         cv.imshow(tela, resultado.imagem);
