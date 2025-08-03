@@ -2,7 +2,6 @@
 import {
   detectarFissura,
   escala_de_cinza,
-  limiarizar 
 } from "./scriptGeral.js";
 
 
@@ -17,12 +16,12 @@ export function handleImageFunction(selectedFunction) {
       escala_de_cinza();
       break;
     case "fun2":
-      limiarizar();
-      break;
-    case "fun3":
       detectarFissura();
       break;
+    case "fun3":
       
+      break;
+
       default:
       const msg = document.createElement("p");
       msg.textContent = "Nenhuma função selecionada.";
