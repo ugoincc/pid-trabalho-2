@@ -1,28 +1,28 @@
 import { curFile, preview, createDownloadLink } from "./common.js";
 
-import { 
-  converte_escala_de_cinza, 
-  transformadaBottomHat, 
-  limiarizacao_simples, 
-  aplicarHSV, 
-  combinarImagens 
+import {
+  converte_escala_de_cinza,
+  transformadaBottomHat,
+  limiarizacao_simples,
+  aplicarHSV,
+  combinarImagens,
 } from "./preProcessamento.js";
 
 // Função para carregar OpenCV.js
 export function carregarOpenCV() {
   return new Promise((resolve, reject) => {
-    if (typeof cv !== 'undefined') {
+    if (typeof cv !== "undefined") {
       resolve();
       return;
     }
 
-    const script = document.createElement('script');
-    script.src = 'https://docs.opencv.org/4.8.0/opencv.js';
+    const script = document.createElement("script");
+    script.src = "https://docs.opencv.org/4.8.0/opencv.js";
     script.async = true;
-    
+
     script.onload = () => {
       const verificarOpenCV = () => {
-        if (typeof cv !== 'undefined' && cv.Mat) {
+        if (typeof cv !== "undefined" && cv.Mat) {
           resolve();
         } else {
           setTimeout(verificarOpenCV, 100);
@@ -30,17 +30,17 @@ export function carregarOpenCV() {
       };
       verificarOpenCV();
     };
-    
-    script.onerror = () => reject(new Error('Erro ao carregar OpenCV.js'));
+
+    script.onerror = () => reject(new Error("Erro ao carregar OpenCV.js"));
     document.head.appendChild(script);
   });
 }
 
 // Função principal para reconhecimento de fissuras usando OpenCV
 export function reconhecerFissuras(imagemOriginal, imagemBinaria) {
-  if (typeof cv === 'undefined') {
-    console.error('OpenCV.js não está carregado');
-    throw new Error('OpenCV não está disponível');
+  if (typeof cv === "undefined") {
+    console.error("OpenCV.js não está carregado");
+    throw new Error("OpenCV não está disponível");
   }
 
   // Configuração fixa e simples
@@ -50,13 +50,13 @@ export function reconhecerFissuras(imagemOriginal, imagemBinaria) {
     aspectRatioMinimo: 1.0,
     desenharContornos: true,
     desenharNumeros: true,
-    desenharEstatisticas: true
+    desenharEstatisticas: true,
   };
 
   try {
     // Converte imagens para matrizes OpenCV
     let matOriginal, matBinaria;
-    
+
     // Processa imagem original
     if (imagemOriginal instanceof HTMLCanvasElement) {
       matOriginal = cv.imread(imagemOriginal);
@@ -95,14 +95,22 @@ export function reconhecerFissuras(imagemOriginal, imagemBinaria) {
     // Encontrar contornos
     const contornos = new cv.MatVector();
     const hierarquia = new cv.Mat();
-    cv.findContours(imagemLimpa, contornos, hierarquia, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-    console.log(`DEBUG: Total de contornos brutos encontrados: ${contornos.size()}`);
+    cv.findContours(
+      imagemLimpa,
+      contornos,
+      hierarquia,
+      cv.RETR_EXTERNAL,
+      cv.CHAIN_APPROX_SIMPLE
+    );
+    console.log(
+      `DEBUG: Total de contornos brutos encontrados: ${contornos.size()}`
+    );
     // Analisar e filtrar contornos
     const fissuras = analisarContornos(contornos, config);
 
     // Criar imagem resultado
     const resultado = matOriginal.clone();
-    
+
     if (config.desenharContornos) {
       desenharFissuras(resultado, fissuras, config);
     }
@@ -110,7 +118,7 @@ export function reconhecerFissuras(imagemOriginal, imagemBinaria) {
     // Preparar dados de retorno
     const dadosRetorno = {
       imagem: resultado,
-      fissuras: fissuras
+      fissuras: fissuras,
     };
 
     // Limpeza de memória
@@ -120,9 +128,8 @@ export function reconhecerFissuras(imagemOriginal, imagemBinaria) {
     hierarquia.delete();
 
     return dadosRetorno;
-
   } catch (error) {
-    console.error('Erro no reconhecimento de fissuras:', error);
+    console.error("Erro no reconhecimento de fissuras:", error);
     throw error;
   }
 }
@@ -131,13 +138,13 @@ export function reconhecerFissuras(imagemOriginal, imagemBinaria) {
 function aplicarMorfologia(imagemBinaria) {
   const imagemLimpa = new cv.Mat();
   const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
-  
+
   // Abertura: erosão seguida de dilatação (remove ruído pequeno)
   cv.morphologyEx(imagemBinaria, imagemLimpa, cv.MORPH_OPEN, kernel);
-  
+
   // Fechamento: dilatação seguida de erosão (conecta partes próximas)
   cv.morphologyEx(imagemLimpa, imagemLimpa, cv.MORPH_CLOSE, kernel);
-  
+
   kernel.delete();
   return imagemLimpa;
 }
@@ -148,38 +155,44 @@ function analisarContornos(contornos, config) {
 
   for (let i = 0; i < contornos.size(); i++) {
     const contorno = contornos.get(i);
-    
+
     // Calcular propriedades do contorno
     const area = cv.contourArea(contorno);
     const perimetro = cv.arcLength(contorno, true);
     const boundingRect = cv.boundingRect(contorno);
-    
+
     // Calcular aspect ratio
-    const aspectRatio = Math.max(boundingRect.width, boundingRect.height) / 
-                       Math.min(boundingRect.width, boundingRect.height);
-    
+    const aspectRatio =
+      Math.max(boundingRect.width, boundingRect.height) /
+      Math.min(boundingRect.width, boundingRect.height);
+
     // Calcular extent (razão entre área do contorno e área do bounding rect)
     const extent = area / (boundingRect.width * boundingRect.height);
-    
+
     // Calcular solidez (razão entre área do contorno e área do hull convexo)
     const hull = new cv.Mat();
     cv.convexHull(contorno, hull);
     const hullArea = cv.contourArea(hull);
     const solidez = area / Math.max(hullArea, 1);
-    
+
     // Calcular momentos para encontrar centroide
     const momentos = cv.moments(contorno);
-    const centroX = momentos.m00 !== 0 ? Math.round(momentos.m10 / momentos.m00) : boundingRect.x + boundingRect.width / 2;
-    const centroY = momentos.m00 !== 0 ? Math.round(momentos.m01 / momentos.m00) : boundingRect.y + boundingRect.height / 2;
+    const centroX =
+      momentos.m00 !== 0
+        ? Math.round(momentos.m10 / momentos.m00)
+        : boundingRect.x + boundingRect.width / 2;
+    const centroY =
+      momentos.m00 !== 0
+        ? Math.round(momentos.m01 / momentos.m00)
+        : boundingRect.y + boundingRect.height / 2;
 
     // Critérios para classificar como fissura
-    const ehFissura = (
+    const ehFissura =
       area >= config.areaMinima &&
       perimetro >= config.perimetroMinimo &&
-      aspectRatio >= config.aspectRatioMinimo 
+      aspectRatio >= config.aspectRatioMinimo;
       //extent < 0.5 &&  // Fissuras não preenchem completamente o bounding rect
       //solidez > 0.5    // Fissuras têm forma relativamente sólida
-    );
 
     if (ehFissura) {
       fissuras.push({
@@ -194,7 +207,7 @@ function analisarContornos(contornos, config) {
         centroX: centroX,
         centroY: centroY,
         comprimento: Math.max(boundingRect.width, boundingRect.height),
-        largura: Math.min(boundingRect.width, boundingRect.height)
+        largura: Math.min(boundingRect.width, boundingRect.height),
       });
     }
 
@@ -207,39 +220,52 @@ function analisarContornos(contornos, config) {
 // Função para desenhar fissuras identificadas
 function desenharFissuras(imagem, fissuras, config) {
   const cores = [
-    new cv.Scalar(0, 255, 0),    // Verde
-    new cv.Scalar(255, 0, 0),    // Azul
-    new cv.Scalar(0, 0, 255),    // Vermelho
-    new cv.Scalar(0, 255, 255),  // Amarelo
-    new cv.Scalar(255, 0, 255),  // Magenta
-    new cv.Scalar(255, 255, 0),  // Ciano
-    new cv.Scalar(128, 255, 0),  // Verde-amarelo
-    new cv.Scalar(255, 128, 0)   // Laranja
+    new cv.Scalar(0, 255, 0), // Verde
+    new cv.Scalar(255, 0, 0), // Azul
+    new cv.Scalar(0, 0, 255), // Vermelho
+    new cv.Scalar(0, 255, 255), // Amarelo
+    new cv.Scalar(255, 0, 255), // Magenta
+    new cv.Scalar(255, 255, 0), // Ciano
+    new cv.Scalar(128, 255, 0), // Verde-amarelo
+    new cv.Scalar(255, 128, 0), // Laranja
   ];
 
   fissuras.forEach((fissura, index) => {
     const cor = cores[index % cores.length];
-    
+
     // Desenhar contorno da fissura
     const contornoVector = new cv.MatVector();
     contornoVector.push_back(fissura.contorno);
     cv.drawContours(imagem, contornoVector, -1, cor, 2);
-    
+
     // Desenhar bounding rectangle
-    const topLeft = new cv.Point(fissura.boundingRect.x, fissura.boundingRect.y);
+    const topLeft = new cv.Point(
+      fissura.boundingRect.x,
+      fissura.boundingRect.y
+    );
     const bottomRight = new cv.Point(
       fissura.boundingRect.x + fissura.boundingRect.width,
       fissura.boundingRect.y + fissura.boundingRect.height
     );
     cv.rectangle(imagem, topLeft, bottomRight, cor, 1);
-    
+
     if (config.desenharNumeros) {
       // Desenhar número da fissura
-      const posicaoTexto = new cv.Point(fissura.centroX - 8, fissura.centroY + 5);
-      cv.putText(imagem, `F${fissura.id}`, posicaoTexto,
-                cv.FONT_HERSHEY_SIMPLEX, 0.6, cor, 2);
+      const posicaoTexto = new cv.Point(
+        fissura.centroX - 8,
+        fissura.centroY + 5
+      );
+      cv.putText(
+        imagem,
+        `F${fissura.id}`,
+        posicaoTexto,
+        cv.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        cor,
+        2
+      );
     }
-    
+
     contornoVector.delete();
   });
 }
@@ -247,16 +273,16 @@ function desenharFissuras(imagem, fissuras, config) {
 // Função principal que integra com o preprocessamento
 export async function reconhecimentoCompleto() {
   if (!curFile) {
-    throw new Error('Nenhuma imagem carregada');
+    throw new Error("Nenhuma imagem carregada");
   }
 
   // AGUARDAR O CARREGAMENTO DO OPENCV PRIMEIRO
   try {
     await carregarOpenCV();
-    console.log('OpenCV carregado com sucesso');
+    console.log("OpenCV carregado com sucesso");
   } catch (error) {
-    console.error('Erro ao carregar OpenCV:', error);
-    throw new Error('Falha ao carregar OpenCV.js');
+    console.error("Erro ao carregar OpenCV:", error);
+    throw new Error("Falha ao carregar OpenCV.js");
   }
 
   const tela = document.createElement("canvas");
@@ -280,19 +306,32 @@ export async function reconhecimentoCompleto() {
         // ========== PIPELINE DE PREPROCESSAMENTO ==========
         const dadosImagem = contexto.getImageData(0, 0, largura, altura);
         const dadosImagemCopia = new ImageData(
-          new Uint8ClampedArray(dadosImagem.data), largura, altura);
+          new Uint8ClampedArray(dadosImagem.data),
+          largura,
+          altura
+        );
 
         // Converter para escala de cinza
         const dadosCinza = converte_escala_de_cinza(dadosImagem);
 
         // Aplicar transformada Bottom Hat
-        const dadosTransformadaHat = transformadaBottomHat(dadosCinza, largura, altura);
+        const dadosTransformadaHat = transformadaBottomHat(
+          dadosCinza,
+          largura,
+          altura
+        );
 
         // Aplicar limiarização
         const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat);
 
         // Aplicar filtro HSV
-        const imagemHSV = aplicarHSV(dadosImagemCopia, largura, altura, 0.5, 0.5);
+        const imagemHSV = aplicarHSV(
+          dadosImagemCopia,
+          largura,
+          altura,
+          0.5,
+          0.5
+        );
 
         // Combinar imagens
         const imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);
@@ -315,15 +354,15 @@ export async function reconhecimentoCompleto() {
         // Criar nova tela para o resultado (cv.imshow pode alterar a tela original)
         const telaResultado = document.createElement("canvas");
         telaResultado.classList.add("styled-canva");
-        
+
         // Exibir resultado na nova tela
         cv.imshow(telaResultado, resultado.imagem);
-        
+
         // Verificar se preview existe antes de tentar appendChild
-        if (preview && typeof preview.appendChild === 'function') {
+        if (preview && typeof preview.appendChild === "function") {
           preview.appendChild(telaResultado);
         } else {
-          console.error('Elemento preview não encontrado ou inválido');
+          console.error("Elemento preview não encontrado ou inválido");
           // Alternativa: anexar ao body ou outro container
           document.body.appendChild(telaResultado);
         }
@@ -332,38 +371,43 @@ export async function reconhecimentoCompleto() {
         const containerDownload = document.querySelector(".download-container");
         if (containerDownload) {
           containerDownload.innerHTML = "";
-          const linkDownload = createDownloadLink(telaResultado, "fissuras_reconhecidas.png");
+          const linkDownload = createDownloadLink(
+            telaResultado,
+            "fissuras_reconhecidas.png"
+          );
           containerDownload.appendChild(linkDownload);
         } else {
-          console.warn('Container de download não encontrado');
+          console.warn("Container de download não encontrado");
         }
 
         // Log básico
-        console.log('=== FISSURAS DETECTADAS ===');
+        console.log("=== FISSURAS DETECTADAS ===");
         console.log(`Total: ${resultado.fissuras.length} fissuras`);
         if (resultado.fissuras.length > 0) {
-          console.log('Detalhes:', resultado.fissuras.map(f => `F${f.id}: ${f.area}px²`));
+          console.log(
+            "Detalhes:",
+            resultado.fissuras.map((f) => `F${f.id}: ${f.area}px²`)
+          );
         }
 
         // Limpar memória
         resultado.imagem.delete();
 
         resolve(resultado);
-
       } catch (error) {
-        console.error('Erro no reconhecimento completo:', error);
+        console.error("Erro no reconhecimento completo:", error);
         reject(error);
       }
     };
 
-    imagem.onerror = () => reject(new Error('Erro ao carregar imagem'));
+    imagem.onerror = () => reject(new Error("Erro ao carregar imagem"));
   });
 }
 
 // Função utilitária para converter dados do preprocessamento
 export function criarImagemBinaria(dadosProcessados, largura, altura) {
   const dadosBinarios = new Uint8ClampedArray(largura * altura * 4);
-  
+
   for (let i = 0; i < dadosProcessados.length; i++) {
     const valor = dadosProcessados[i];
     dadosBinarios[i * 4 + 0] = valor;
@@ -371,6 +415,6 @@ export function criarImagemBinaria(dadosProcessados, largura, altura) {
     dadosBinarios[i * 4 + 2] = valor;
     dadosBinarios[i * 4 + 3] = 255;
   }
-  
+
   return new ImageData(dadosBinarios, largura, altura);
 }

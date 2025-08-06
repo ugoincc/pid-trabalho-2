@@ -1,4 +1,9 @@
-import { curFile, preview, createDownloadLink } from "./common.js";
+import {
+  curFile,
+  preview,
+  createDownloadLink,
+  currentThreshold,
+} from "./common.js";
 
 // Funcao auxiliar para converter para escala de cinza usando formula luma
 export function converte_escala_de_cinza(dadosImagem) {
@@ -245,7 +250,10 @@ export function detectarFissura() {
     );
 
     // -------------------- Aplicando limiarizacao a imagem ------------------------------------- //
-    const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat);
+    const dadosLimiarizados = limiarizacao_simples(
+      dadosTransformadaHat,
+      currentThreshold
+    );
 
     // -------------------- Transformando a imagem original de RGB para HSV --------------------- //
     const imagemHSV = aplicarHSV(dadosImagemCopia, largura, altura, 0.6, 0.6);

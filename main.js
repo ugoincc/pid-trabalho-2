@@ -1,14 +1,21 @@
+import { detectarFissura, escala_de_cinza } from "./preProcessamento.js";
 
-import {
-  detectarFissura,
-  escala_de_cinza,
-} from "./preProcessamento.js";
-
-import {
-  reconhecimentoCompleto,
-} from "./reconhecimentoDeFissura.js";
+import { reconhecimentoCompleto } from "./reconhecimentoDeFissura.js";
 
 import "./common.js";
+
+// Escuta mudanças no threshold e recarrega automaticamente se "Destacar Fissura" estiver selecionada
+document.addEventListener("thresholdChanged", (event) => {
+  const functionSelector = document.querySelector("#functionSelector");
+  if (functionSelector.value === "fun2") {
+    handleImageFunction("fun2");
+  }
+});
+
+// Escuta mudanças na seleção de função
+document.addEventListener("functionChanged", (event) => {
+  handleImageFunction(event.detail);
+});
 
 export function handleImageFunction(selectedFunction) {
   const preview = document.querySelector(".single-output");
@@ -22,9 +29,14 @@ export function handleImageFunction(selectedFunction) {
       detectarFissura();
       break;
     case "fun3":
-      reconhecimentoCompleto();
+      reconhecimentoCompleto().catch((error) => {
+        console.error("Erro no reconhecimento completo:", error);
+        const msg = document.createElement("p");
+        msg.textContent = "Erro ao executar reconhecimento: " + error.message;
+        preview.appendChild(msg);
+      });
       break;
-      default:
+    default:
       const msg = document.createElement("p");
       msg.textContent = "Nenhuma função selecionada.";
       preview.appendChild(msg);

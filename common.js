@@ -1,15 +1,39 @@
-import { handleImageFunction } from "./main.js";
-
 const input = document.querySelector("#image");
 const preview = document.querySelector(".single-output");
 const originalImageContainer = document.querySelector(".original-image");
 const functionSelector = document.querySelector("#functionSelector");
+const thresholdSlider = document.querySelector("#threshold");
+const thresholdValue = document.querySelector("#thresholdValue");
 
 const primaryFileNameDisplay = document.createElement("p");
 primaryFileNameDisplay.classList = "filename";
 input.parentNode.insertBefore(primaryFileNameDisplay, input.nextSibling);
 
 let curFile = null;
+let currentThreshold = 14;
+
+thresholdSlider.addEventListener("change", () => {
+  currentThreshold = parseInt(thresholdSlider.value);
+  thresholdValue.textContent = currentThreshold;
+
+  // Dispara um evento customizado para notificar mudanças no threshold
+  const event = new CustomEvent("thresholdChanged", {
+    detail: currentThreshold,
+  });
+  document.dispatchEvent(event);
+});
+
+// Também adiciona o evento "input" para atualização em tempo real enquanto arrasta
+thresholdSlider.addEventListener("input", () => {
+  currentThreshold = parseInt(thresholdSlider.value);
+  thresholdValue.textContent = currentThreshold;
+
+  // Dispara um evento customizado para notificar mudanças no threshold
+  const event = new CustomEvent("thresholdChanged", {
+    detail: currentThreshold,
+  });
+  document.dispatchEvent(event);
+});
 
 input.addEventListener("change", () => {
   curFile = input.files[0];
@@ -20,7 +44,11 @@ input.addEventListener("change", () => {
 functionSelector.addEventListener("change", () => {
   if (curFile) {
     const selectedFunction = functionSelector.value;
-    handleImageFunction(selectedFunction);
+    // Dispara um evento customizado para notificar mudança de função
+    const event = new CustomEvent("functionChanged", {
+      detail: selectedFunction,
+    });
+    document.dispatchEvent(event);
   } else {
     alert("Selecione uma imagem antes de aplicar uma operação.");
   }
@@ -82,6 +110,7 @@ export {
   preview,
   originalImageContainer,
   functionSelector,
+  currentThreshold,
   updatePrimaryImageDisplay,
   displayOriginalImage,
   createDownloadLink,
