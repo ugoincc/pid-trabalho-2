@@ -30,9 +30,7 @@ export function limiarizacao_simples(dadosCinza, limiar = 14) {
   }
 
   return resultado;
-  return resultado;
 }
-
 
 // Funcao de conversao para escala de cinza
 export function escala_de_cinza() {
@@ -56,7 +54,7 @@ export function escala_de_cinza() {
     for (let i = 0, j = 0; i < dados.length; i += 4, j++) {
       dados[i] = dadosCinza[j]; // Vermelho
       dados[i + 1] = dadosCinza[j]; // Verde
-      dados[i + 2] = dadosCinza[j]; // Azul 
+      dados[i + 2] = dadosCinza[j]; // Azul
     }
 
     contexto.putImageData(dadosImagem, 0, 0);
@@ -128,12 +126,11 @@ function aplicarDilatacao(imagemCinza, largura, altura) {
 }
 
 // Funcao para realcar elementos mais claros que o fundo.
-export function transformadaBottomHat (dadosCinza, largura, altura){
-
+export function transformadaBottomHat(dadosCinza, largura, altura) {
   // Substituicao do valor de cada pixel pelo valor maximo dos vizinhos
   const imagem_dilatada = aplicarDilatacao(dadosCinza, largura, altura);
 
-  // Substituicao do valor de cada pixel pelo valor minimo dos valores vizinhos 
+  // Substituicao do valor de cada pixel pelo valor minimo dos valores vizinhos
   const imagem_fechamento = aplicarErosao(imagem_dilatada, largura, altura);
 
   // 2. Bottom Hat = fechamento - imagem original
@@ -142,7 +139,7 @@ export function transformadaBottomHat (dadosCinza, largura, altura){
     resultado[i] = Math.max(0, imagem_fechamento[i] - dadosCinza[i]);
   }
 
-  return resultado;    
+  return resultado;
 }
 
 //---------------------------------------------------------------//
@@ -177,7 +174,13 @@ function rgbParaHsv(r, g, b) {
   return { h, s, v };
 }
 
-export function aplicarHSV(dadosImagem, largura, altura, limiarS = 0.5, limiarV = 0.5) {
+export function aplicarHSV(
+  dadosImagem,
+  largura,
+  altura,
+  limiarS = 0.5,
+  limiarV = 0.5
+) {
   const dados = dadosImagem.data;
   const resultado = new Uint8ClampedArray(largura * altura);
 
@@ -205,12 +208,12 @@ export function combinarImagens(dadosLimiarizados, imagemHSV) {
 
   for (let i = 0; i < dadosLimiarizados.length; i++) {
     // AND logico invertido para mascaras com 0 = fissura
-    resultado[i] = (dadosLimiarizados[i] === 0 && imagemHSV[i] === 0) ? 0 : 255;
+    resultado[i] = dadosLimiarizados[i] === 0 && imagemHSV[i] === 0 ? 0 : 255;
   }
 
   return resultado;
 }
-export function detectarFissura(){
+export function detectarFissura() {
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
   const contexto = tela.getContext("2d");
@@ -226,13 +229,20 @@ export function detectarFissura(){
 
     const dadosImagem = contexto.getImageData(0, 0, tela.width, tela.height);
     const dadosImagemCopia = new ImageData(
-                  new Uint8ClampedArray(dadosImagem.data),largura, altura);
+      new Uint8ClampedArray(dadosImagem.data),
+      largura,
+      altura
+    );
 
     // -------------------- Convertendo o vetor extraido para escala de cinza -------------------- //
     const dadosCinza = converte_escala_de_cinza(dadosImagem);
 
-    // -------------------- Aplicando a transformada de bottom hat ------------------------------ // 
-    const dadosTransformadaHat = transformadaBottomHat(dadosCinza, largura, altura);
+    // -------------------- Aplicando a transformada de bottom hat ------------------------------ //
+    const dadosTransformadaHat = transformadaBottomHat(
+      dadosCinza,
+      largura,
+      altura
+    );
 
     // -------------------- Aplicando limiarizacao a imagem ------------------------------------- //
     const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat);
@@ -241,9 +251,9 @@ export function detectarFissura(){
     const imagemHSV = aplicarHSV(dadosImagemCopia, largura, altura, 0.6, 0.6);
 
     // -------------------- Combinando a imagem 1 (transformada de hat) e a imagem 2 (HSV) ------ //
-    let imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);    
+    let imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);
 
-    // Converte para RGBA    
+    // Converte para RGBA
     const dadosRGBA = new Uint8ClampedArray(largura * altura * 4);
     for (let i = 0; i < imagemResultante.length; i++) {
       dadosRGBA[i * 4 + 0] = imagemResultante[i];
@@ -258,8 +268,10 @@ export function detectarFissura(){
 
     const containerDownload = document.querySelector(".download-container");
     containerDownload.innerHTML = "";
-    const linkDownload = createDownloadLink(tela, "imagem_fissura_detectada.png");
+    const linkDownload = createDownloadLink(
+      tela,
+      "imagem_fissura_detectada.png"
+    );
     containerDownload.appendChild(linkDownload);
   };
-}   
-  
+}

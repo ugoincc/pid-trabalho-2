@@ -1,32 +1,20 @@
 import { handleImageFunction } from "./main.js";
 
 const input = document.querySelector("#image");
-const secondaryInput = document.querySelector("#secondaryImage");
 const preview = document.querySelector(".single-output");
+const originalImageContainer = document.querySelector(".original-image");
 const functionSelector = document.querySelector("#functionSelector");
 
 const primaryFileNameDisplay = document.createElement("p");
 primaryFileNameDisplay.classList = "filename";
 input.parentNode.insertBefore(primaryFileNameDisplay, input.nextSibling);
 
-const secondaryFileNameDisplay = document.createElement("p");
-secondaryFileNameDisplay.className = "filename";
-secondaryInput.parentNode.insertBefore(
-  secondaryFileNameDisplay,
-  secondaryInput.nextSibling
-);
-
 let curFile = null;
-let secondaryFile = null;
 
 input.addEventListener("change", () => {
   curFile = input.files[0];
   updatePrimaryImageDisplay(curFile);
-});
-
-secondaryInput.addEventListener("change", () => {
-  secondaryFile = secondaryInput.files[0];
-  updateSecondaryImageDisplay(secondaryFile);
+  displayOriginalImage(curFile);
 });
 
 functionSelector.addEventListener("change", () => {
@@ -51,13 +39,29 @@ function updatePrimaryImageDisplay(file) {
   console.log("Imagem principal selecionada.");
 }
 
-function updateSecondaryImageDisplay(file) {
+function displayOriginalImage(file) {
   if (!file) {
-    secondaryFileNameDisplay.textContent = "Nenhum arquivo selecionado";
-  } else {
-    secondaryFileNameDisplay.textContent = `Arquivo: ${file.name}`;
+    originalImageContainer.innerHTML = "";
+    return;
   }
-  console.log("Imagem secundária selecionada.");
+
+  // Clear previous original image
+  originalImageContainer.innerHTML = "";
+
+  // Create canvas for original image
+  const canvas = document.createElement("canvas");
+  canvas.classList.add("styled-canva");
+  const ctx = canvas.getContext("2d");
+  const img = new Image();
+
+  img.onload = () => {
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    originalImageContainer.appendChild(canvas);
+  };
+
+  img.src = URL.createObjectURL(file);
 }
 
 function createDownloadLink(canvas, filename = "imagem.png") {
@@ -74,12 +78,11 @@ function createDownloadLink(canvas, filename = "imagem.png") {
 
 export {
   curFile,
-  secondaryFile,
   input,
-  secondaryInput,
   preview,
+  originalImageContainer,
   functionSelector,
   updatePrimaryImageDisplay,
-  updateSecondaryImageDisplay,
+  displayOriginalImage,
   createDownloadLink,
 };

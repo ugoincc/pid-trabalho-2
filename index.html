@@ -39,22 +39,6 @@
             Selecionar Arquivo
           </button>
         </div>
-        <div class="upload-container">
-          <label for="imgUpload"> Imagem Secundária: </label>
-          <input
-            type="file"
-            name="image"
-            id="secondaryImage"
-            accept="image/png, image/jpeg"
-          />
-          <button
-            type="button"
-            class="custom-button"
-            onclick="document.getElementById('secondaryImage').click();"
-          >
-            Selecionar Arquivo
-          </button>
-        </div>
 
         <div class="operation-wrapper">
           <div class="select-container">
@@ -65,13 +49,23 @@
               <option value="fun3">Reconhecer Fissuras</option>
             </select>
           </div>
+        </div>
 
-          <div class="download-container">
-            <a class="custom-button disabled">Download da Imagem</a>
-          </div>
+        <div class="download-container">
+          <a class="custom-button disabled">Download da Imagem</a>
         </div>
       </div>
-      <div class="single-output"></div>
+
+      <div class="images-container">
+        <div class="original-image-container">
+          <h3>Imagem Original</h3>
+          <div class="original-image"></div>
+        </div>
+        <div class="processed-image-container">
+          <h3>Resultado do Processamento</h3>
+          <div class="single-output"></div>
+        </div>
+      </div>
     </div>
   </body>
 </html>
