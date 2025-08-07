@@ -223,7 +223,7 @@ export function combinarImagens(dadosLimiarizados, imagemHSV) {
 }
 
 // Realca a fissura atraves da transformada de hat combinada com HSV
-export function detectarFissura() {
+export function realcarFissura() {
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
   const contexto = tela.getContext("2d");
