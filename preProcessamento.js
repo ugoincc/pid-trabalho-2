@@ -72,6 +72,7 @@ export function escala_de_cinza() {
   };
 }
 
+// Aplica a erosao em imagem dilatada
 function aplicarErosao(imagem_dilatada, largura, altura) {
   const imagem_copia = new Uint8ClampedArray(imagem_dilatada); // copia de entrada
   const imagem_fechamento = new Uint8ClampedArray(imagem_dilatada.length); // imagem de saida
@@ -102,6 +103,7 @@ function aplicarErosao(imagem_dilatada, largura, altura) {
   return imagem_fechamento;
 }
 
+// Aplica a dilatacao para imagem e escala de cinza
 function aplicarDilatacao(imagemCinza, largura, altura) {
   const resultado = new Uint8Array(largura * altura);
 
@@ -151,7 +153,7 @@ export function transformadaBottomHat(dadosCinza, largura, altura) {
 //-------------------------Segundo Fluxo-------------------------//
 //---------------------------------------------------------------//
 
-// Função para converter RGB para HSV
+// Funcao para converter RGB para HSV
 function rgbParaHsv(r, g, b) {
   r /= 255;
   g /= 255;
@@ -179,6 +181,7 @@ function rgbParaHsv(r, g, b) {
   return { h, s, v };
 }
 
+// Aplica uma segmentacao baseada nos canais de Saturacao (S) e Valor (V) do espaço de cor HSV.
 export function aplicarHSV(
   dadosImagem,
   largura,
@@ -218,6 +221,8 @@ export function combinarImagens(dadosLimiarizados, imagemHSV) {
 
   return resultado;
 }
+
+// Realca a fissura atraves da transformada de hat combinada com HSV
 export function detectarFissura() {
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
