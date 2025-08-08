@@ -72,6 +72,183 @@ export function escala_de_cinza() {
   };
 }
 
+// VERSÕES CORRIGIDAS - Para imagens binárias onde 0=fissura, 255=fundo
+
+// Dilatação corrigida para fissuras (expande pixels pretos)
+function aplicarDilatacaoMelhorada(imagemBinaria, largura, altura, tamanhoKernel = 3, iteracoes = 1) {
+  let resultado = new Uint8ClampedArray(imagemBinaria);
+  
+  for (let iter = 0; iter < iteracoes; iter++) {
+    const temp = new Uint8ClampedArray(resultado);
+    const offset = Math.floor(tamanhoKernel / 2);
+    
+    for (let y = offset; y < altura - offset; y++) {
+      for (let x = offset; x < largura - offset; x++) {
+        const indiceAtual = y * largura + x;
+        
+        // Se o pixel atual é fundo (255), verifica se deve virar fissura
+        if (resultado[indiceAtual] === 255) {
+          let temFissuraVizinha = false;
+          
+          // Percorre o elemento estruturante
+          for (let dy = -offset; dy <= offset && !temFissuraVizinha; dy++) {
+            for (let dx = -offset; dx <= offset && !temFissuraVizinha; dx++) {
+              const nx = x + dx;
+              const ny = y + dy;
+              const indice = ny * largura + nx;
+              
+              // Se encontrar uma fissura (0) na vizinhança, dilata
+              if (resultado[indice] === 0) {
+                temFissuraVizinha = true;
+              }
+            }
+          }
+          
+          if (temFissuraVizinha) {
+            temp[indiceAtual] = 0; // Transforma em fissura
+          }
+        }
+      }
+    }
+    
+    resultado = temp;
+  }
+  
+  return resultado;
+}
+
+// Erosão corrigida para fissuras (encolhe pixels pretos)
+function aplicarErosaoMelhorada(imagemBinaria, largura, altura, tamanhoKernel = 3, iteracoes = 1) {
+  let resultado = new Uint8ClampedArray(imagemBinaria);
+  
+  for (let iter = 0; iter < iteracoes; iter++) {
+    const temp = new Uint8ClampedArray(resultado);
+    const offset = Math.floor(tamanhoKernel / 2);
+    
+    for (let y = offset; y < altura - offset; y++) {
+      for (let x = offset; x < largura - offset; x++) {
+        const indiceAtual = y * largura + x;
+        
+        // Se o pixel atual é fissura (0), verifica se deve continuar sendo
+        if (resultado[indiceAtual] === 0) {
+          let todoVizinhosFissura = true;
+          
+          // Percorre o elemento estruturante
+          for (let dy = -offset; dy <= offset && todoVizinhosFissura; dy++) {
+            for (let dx = -offset; dx <= offset && todoVizinhosFissura; dx++) {
+              const nx = x + dx;
+              const ny = y + dy;
+              const indice = ny * largura + nx;
+              
+              // Se encontrar fundo (255) na vizinhança, erode
+              if (resultado[indice] === 255) {
+                todoVizinhosFissura = false;
+              }
+            }
+          }
+          
+          if (!todoVizinhosFissura) {
+            temp[indiceAtual] = 255; // Transforma em fundo
+          }
+        }
+      }
+    }
+    
+    resultado = temp;
+  }
+  
+  return resultado;
+}
+
+// Fechamento corrigido (dilatação + erosão)
+function aplicarFechamento(imagemBinaria, largura, altura, tamanhoKernel = 3, iteracoes = 1) {
+  // Primeiro dilata para preencher lacunas
+  const imagemDilatada = aplicarDilatacaoMelhorada(imagemBinaria, largura, altura, tamanhoKernel, iteracoes);
+  
+  // Depois erode para voltar ao tamanho aproximado original
+  const imagemFechada = aplicarErosaoMelhorada(imagemDilatada, largura, altura, tamanhoKernel, iteracoes);
+  
+  return imagemFechada;
+}
+
+// Abertura corrigida (erosão + dilatação)
+function aplicarAbertura(imagemBinaria, largura, altura, tamanhoKernel = 3, iteracoes = 1) {
+  // Primeiro erode para remover ruído
+  const imagemErodida = aplicarErosaoMelhorada(imagemBinaria, largura, altura, tamanhoKernel, iteracoes);
+  
+  // Depois dilata para restaurar o tamanho
+  const imagemAberta = aplicarDilatacaoMelhorada(imagemErodida, largura, altura, tamanhoKernel, iteracoes);
+  
+  return imagemAberta;
+}
+
+// Filtro mediano mantém o mesmo
+function aplicarFiltroMediano(imagemBinaria, largura, altura, tamanhoKernel = 3) {
+  const resultado = new Uint8ClampedArray(imagemBinaria.length);
+  const offset = Math.floor(tamanhoKernel / 2);
+  
+  for (let y = offset; y < altura - offset; y++) {
+    for (let x = offset; x < largura - offset; x++) {
+      const vizinhos = [];
+      
+      // Coleta valores dos vizinhos
+      for (let dy = -offset; dy <= offset; dy++) {
+        for (let dx = -offset; dx <= offset; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          const indice = ny * largura + nx;
+          vizinhos.push(imagemBinaria[indice]);
+        }
+      }
+      
+      // Ordena e pega a mediana
+      vizinhos.sort((a, b) => a - b);
+      const mediana = vizinhos[Math.floor(vizinhos.length / 2)];
+      
+      const indiceAtual = y * largura + x;
+      resultado[indiceAtual] = mediana;
+    }
+  }
+  
+  return resultado;
+}
+
+// CORREÇÃO PRINCIPAL: Conectar componentes com RETURN
+function conectarComponentes(imagemBinaria, largura, altura) {
+  const resultado = new Uint8ClampedArray(imagemBinaria); // Copia a imagem original
+  
+  for (let y = 1; y < altura - 1; y++) {
+    for (let x = 1; x < largura - 1; x++) {
+      const indiceAtual = y * largura + x;
+      const pixelAtual = imagemBinaria[indiceAtual];
+      
+      // Se é fundo (255), verifica se deve conectar fissuras
+      if (pixelAtual === 255) {
+        // Verifica vizinhança em cruz
+        const cima = imagemBinaria[(y-1) * largura + x];
+        const baixo = imagemBinaria[(y+1) * largura + x];
+        const esquerda = imagemBinaria[y * largura + (x-1)];
+        const direita = imagemBinaria[y * largura + (x+1)];
+        
+        // Se tem fissuras opostas, conecta
+        if ((cima === 0 && baixo === 0) || (esquerda === 0 && direita === 0)) {
+          resultado[indiceAtual] = 0; // Conecta as fissuras
+        }
+        
+        // Se tem pelo menos 3 vizinhos com fissura, preenche
+        const fissuraVizinhos = [cima, baixo, esquerda, direita].filter(v => v === 0).length;
+        if (fissuraVizinhos >= 3) {
+          resultado[indiceAtual] = 0;
+        }
+      }
+    }
+  }
+  
+  return resultado; // CORREÇÃO: retorna o resultado!
+}
+  
+  
+
 // Aplica a erosao em imagem dilatada
 function aplicarErosao(imagem_dilatada, largura, altura) {
   const imagem_copia = new Uint8ClampedArray(imagem_dilatada); // copia de entrada
@@ -223,7 +400,7 @@ export function combinarImagens(dadosLimiarizados, imagemHSV) {
 }
 
 // Realca a fissura atraves da transformada de hat combinada com HSV
-export function realcarFissura() {
+export function realcarFissuraAprimorada() {
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
   const contexto = tela.getContext("2d");
@@ -233,8 +410,8 @@ export function realcarFissura() {
   imagem.onload = () => {
     tela.width = imagem.width;
     tela.height = imagem.height;
-    let largura = tela.width;
-    let altura = tela.height;
+    const largura = tela.width;
+    const altura = tela.height;
     contexto.drawImage(imagem, 0, 0);
 
     const dadosImagem = contexto.getImageData(0, 0, tela.width, tela.height);
@@ -244,29 +421,30 @@ export function realcarFissura() {
       altura
     );
 
-    // -------------------- Convertendo o vetor extraido para escala de cinza -------------------- //
+    // -------------------- Processamento existente -------------------- //
     const dadosCinza = converte_escala_de_cinza(dadosImagem);
-
-    // -------------------- Aplicando a transformada de bottom hat ------------------------------ //
-    const dadosTransformadaHat = transformadaBottomHat(
-      dadosCinza,
-      largura,
-      altura
-    );
-
-    // -------------------- Aplicando limiarizacao a imagem ------------------------------------- //
-    const dadosLimiarizados = limiarizacao_simples(
-      dadosTransformadaHat,
-      currentThreshold
-    );
-
-    // -------------------- Transformando a imagem original de RGB para HSV --------------------- //
+    const dadosTransformadaHat = transformadaBottomHat(dadosCinza, largura, altura);
+    const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat, currentThreshold);
     const imagemHSV = aplicarHSV(dadosImagemCopia, largura, altura, 0.6, 0.6);
-
-    // -------------------- Combinando a imagem 1 (transformada de hat) e a imagem 2 (HSV) ------ //
     let imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);
 
-    // Converte para RGBA
+    console.log("Imagem inicial - pixels pretos:", imagemResultante.filter(p => p === 0).length);
+
+    // -------------------- MELHORIAS MORFOLÓGICAS (versão conservadora) -------------------- //
+    
+    // 1. Conecta componentes próximos primeiro
+    imagemResultante = conectarComponentes(imagemResultante, largura, altura);
+    console.log("Após conectar componentes - pixels pretos:", imagemResultante.filter(p => p === 0).length);
+    
+    // 2. Fecha lacunas pequenas (mais suave)
+    //imagemResultante = aplicarFechamento(imagemResultante, largura, altura, 3, 1);
+    //console.log("Após fechamento - pixels pretos:", imagemResultante.filter(p => p === 0).length);
+    
+    // 3. Dilatação leve para engrossar
+    imagemResultante = aplicarDilatacaoMelhorada(imagemResultante, largura, altura, 3, 1);
+    console.log("Após dilatação - pixels pretos:", imagemResultante.filter(p => p === 0).length);
+
+    // -------------------- Conversão final para RGBA -------------------- //
     const dadosRGBA = new Uint8ClampedArray(largura * altura * 4);
     for (let i = 0; i < imagemResultante.length; i++) {
       dadosRGBA[i * 4 + 0] = imagemResultante[i];
@@ -281,10 +459,7 @@ export function realcarFissura() {
 
     const containerDownload = document.querySelector(".download-container");
     containerDownload.innerHTML = "";
-    const linkDownload = createDownloadLink(
-      tela,
-      "imagem_fissura_detectada.png"
-    );
+    const linkDownload = createDownloadLink(tela, "imagem_fissura_aprimorada.png");
     containerDownload.appendChild(linkDownload);
   };
 }

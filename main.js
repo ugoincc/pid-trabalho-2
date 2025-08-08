@@ -1,4 +1,4 @@
-import { realcarFissura, escala_de_cinza } from "./preProcessamento.js";
+import { escala_de_cinza, realcarFissuraAprimorada } from "./preProcessamento.js";
 
 import "./common.js";
 
@@ -24,7 +24,7 @@ export function handleImageFunction(selectedFunction) {
       escala_de_cinza();
       break;
     case "fun2":
-      realcarFissura();
+      realcarFissuraAprimorada();
       break;
     case "fun3":
       reconhecimentoCompleto().catch((error) => {
