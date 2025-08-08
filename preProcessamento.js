@@ -174,10 +174,10 @@ function aplicarFechamento(imagemBinaria, largura, altura, tamanhoKernel = 3, it
 // Abertura corrigida (erosão + dilatação)
 function aplicarAbertura(imagemBinaria, largura, altura, tamanhoKernel = 3, iteracoes = 1) {
   // Primeiro erode para remover ruído
-  const imagemErodida = aplicarErosaoMelhorada(imagemBinaria, largura, altura, tamanhoKernel, iteracoes);
+  //const imagemErodida = aplicarErosaoMelhorada(imagemBinaria, largura, altura, tamanhoKernel, iteracoes);
   
   // Depois dilata para restaurar o tamanho
-  const imagemAberta = aplicarDilatacaoMelhorada(imagemErodida, largura, altura, tamanhoKernel, iteracoes);
+  const imagemAberta = aplicarDilatacaoMelhorada(imagemBinaria, largura, altura, tamanhoKernel, iteracoes);
   
   return imagemAberta;
 }
@@ -437,12 +437,12 @@ export function realcarFissuraAprimorada() {
     console.log("Após conectar componentes - pixels pretos:", imagemResultante.filter(p => p === 0).length);
     
     // 2. Fecha lacunas pequenas (mais suave)
-    //imagemResultante = aplicarFechamento(imagemResultante, largura, altura, 3, 1);
+    imagemResultante = aplicarAbertura(imagemResultante, largura, altura, 3, 1);
     //console.log("Após fechamento - pixels pretos:", imagemResultante.filter(p => p === 0).length);
     
     // 3. Dilatação leve para engrossar
-    imagemResultante = aplicarDilatacaoMelhorada(imagemResultante, largura, altura, 3, 1);
-    console.log("Após dilatação - pixels pretos:", imagemResultante.filter(p => p === 0).length);
+    //imagemResultante = aplicarDilatacaoMelhorada(imagemResultante, largura, altura, 3, 1);
+    //console.log("Após dilatação - pixels pretos:", imagemResultante.filter(p => p === 0).length);
 
     // -------------------- Conversão final para RGBA -------------------- //
     const dadosRGBA = new Uint8ClampedArray(largura * altura * 4);
