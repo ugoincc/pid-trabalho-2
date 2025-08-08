@@ -1,4 +1,4 @@
-import { realcarFissura, escala_de_cinza } from "./preProcessamento.js";
+import { realcarFissura, escala_de_cinza,LimiarizacaoSimples,TransformadaBottomHat,TransformarRgbParaHsv, AplicarHSV } from "./preProcessamento.js";
 
 import "./common.js";
 
@@ -24,15 +24,19 @@ export function handleImageFunction(selectedFunction) {
       escala_de_cinza();
       break;
     case "fun2":
-      realcarFissura();
+      LimiarizacaoSimples();
       break;
     case "fun3":
-      reconhecimentoCompleto().catch((error) => {
-        console.error("Erro no reconhecimento completo:", error);
-        const msg = document.createElement("p");
-        msg.textContent = "Erro ao executar reconhecimento: " + error.message;
-        preview.appendChild(msg);
-      });
+      TransformadaBottomHat();
+      break;
+    case "fun4":
+      TransformarRgbParaHsv();
+      break;
+    case "fun5":
+      AplicarHSV();
+      break;
+    case "fun6":
+      realcarFissura();
       break;
     default:
       const msg = document.createElement("p");

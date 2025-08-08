@@ -26,15 +26,58 @@ export function converte_escala_de_cinza(dadosImagem) {
 }
 
 // Funcao de limiarizacao simples
-export function limiarizacao_simples(dadosCinza, limiar = 14) {
+export function limiarizacao_simples(dadosCinza, limiar) {
   const valorLimiar = Math.round(limiar);
   const resultado = new Uint8ClampedArray(dadosCinza.length);
 
   for (let i = 0; i < dadosCinza.length; i++) {
-    resultado[i] = dadosCinza[i] >= valorLimiar ? 0 : 255;
+    resultado[i] = dadosCinza[i] >= valorLimiar ? 255 : 0;
   }
 
   return resultado;
+}
+
+export function LimiarizacaoSimples() {
+  const tela = document.createElement("canvas");
+  tela.classList.add("styled-canva");
+  const contexto = tela.getContext("2d");
+  const imagem = new Image();
+  imagem.src = URL.createObjectURL(curFile);
+
+  imagem.onload = () => {
+    tela.width = imagem.width;
+    tela.height = imagem.height;
+    contexto.drawImage(imagem, 0, 0);
+
+    const dadosImagem = contexto.getImageData(0, 0, tela.width, tela.height);
+    const largura = tela.width;
+    const altura = tela.height;
+
+    // Usa a função auxiliar para converter para escala de cinza
+    const dadosCinza = converte_escala_de_cinza(dadosImagem);
+
+    // Aplica limiarização simples
+    const dadosLimiarizados = limiarizacao_simples(dadosCinza, currentThreshold);
+
+    // Aplica os valores limiarizados à imagem RGBA
+    for (let i = 0, j = 0; i < dadosImagem.data.length; i += 4, j++) {
+      dadosImagem.data[i] = dadosLimiarizados[j];     // R
+      dadosImagem.data[i + 1] = dadosLimiarizados[j]; // G
+      dadosImagem.data[i + 2] = dadosLimiarizados[j]; // B
+      // Mantém o canal Alpha
+    }
+
+    contexto.putImageData(dadosImagem, 0, 0);
+    preview.appendChild(tela);
+
+    const containerDownload = document.querySelector(".download-container");
+    containerDownload.innerHTML = "";
+    const linkDownload = createDownloadLink(
+      tela,
+      "imagem_limiarizacao_simples.png"
+    );
+    containerDownload.appendChild(linkDownload);
+  };
 }
 
 // Funcao de conversao para escala de cinza
@@ -149,11 +192,52 @@ export function transformadaBottomHat(dadosCinza, largura, altura) {
   return resultado;
 }
 
+export function TransformadaBottomHat() {
+  const tela = document.createElement("canvas");
+  tela.classList.add("styled-canva");
+  const contexto = tela.getContext("2d");
+  const imagem = new Image();
+  imagem.src = URL.createObjectURL(curFile);
+
+  imagem.onload = () => {
+    tela.width = imagem.width;
+    tela.height = imagem.height;
+    contexto.drawImage(imagem, 0, 0);
+
+    const dadosImagem = contexto.getImageData(0, 0, tela.width, tela.height);
+    const largura = tela.width;
+    const altura = tela.height;
+
+    // Converte para escala de cinza
+    const dadosCinza = converte_escala_de_cinza(dadosImagem);
+
+    // Aplica a transformada Bottom Hat
+    const dadosBottomHat = transformadaBottomHat(dadosCinza, largura, altura);
+
+    for (let i = 0, j = 0; i < dadosImagem.data.length; i += 4, j++) {
+      const invertido = 255 - dadosBottomHat[j]; // Inverte o valor
+      dadosImagem.data[i] = invertido;
+      dadosImagem.data[i + 1] = invertido;
+      dadosImagem.data[i + 2] = invertido;
+  // Mantém o canal Alpha (dadosImagem.data[i + 3]) sem alterações
+}
+
+
+    contexto.putImageData(dadosImagem, 0, 0);
+    preview.appendChild(tela);
+
+    const containerDownload = document.querySelector(".download-container");
+    containerDownload.innerHTML = "";
+    const linkDownload = createDownloadLink(tela, "imagem_bottom_hat.png");
+    containerDownload.appendChild(linkDownload);
+  };
+}
+
 //---------------------------------------------------------------//
 //-------------------------Segundo Fluxo-------------------------//
 //---------------------------------------------------------------//
 
-// Funcao para converter RGB para HSV
+// Função para converter RGB para HSV (já fornecida)
 function rgbParaHsv(r, g, b) {
   r /= 255;
   g /= 255;
@@ -181,8 +265,55 @@ function rgbParaHsv(r, g, b) {
   return { h, s, v };
 }
 
+export function TransformarRgbParaHsv() {
+  const tela = document.createElement("canvas");
+  tela.classList.add("styled-canva");
+  const contexto = tela.getContext("2d");
+  const imagem = new Image();
+  imagem.src = URL.createObjectURL(curFile);
+
+  imagem.onload = () => {
+    tela.width = imagem.width;
+    tela.height = imagem.height;
+    contexto.drawImage(imagem, 0, 0);
+
+    const dadosImagem = contexto.getImageData(0, 0, tela.width, tela.height);
+    const largura = tela.width;
+    const altura = tela.height;
+
+    // Novo array para dados da imagem (RGBA)
+    const dadosSaida = new Uint8ClampedArray(dadosImagem.data.length);
+
+    // Percorre pixels (4 por pixel: R,G,B,A)
+    for (let i = 0; i < dadosImagem.data.length; i += 4) {
+      const r = dadosImagem.data[i];
+      const g = dadosImagem.data[i + 1];
+      const b = dadosImagem.data[i + 2];
+
+      const hsv = rgbParaHsv(r, g, b);
+
+      // Vamos usar o canal V para criar imagem em tons de cinza
+      const v = Math.round(hsv.v * 255);
+
+      dadosSaida[i] = v;       // R
+      dadosSaida[i + 1] = v;   // G
+      dadosSaida[i + 2] = v;   // B
+      dadosSaida[i + 3] = dadosImagem.data[i + 3]; // mantém Alpha
+    }
+
+    const novaImagem = new ImageData(dadosSaida, largura, altura);
+    contexto.putImageData(novaImagem, 0, 0);
+    preview.appendChild(tela);
+
+    const containerDownload = document.querySelector(".download-container");
+    containerDownload.innerHTML = "";
+    const linkDownload = createDownloadLink(tela, "imagem_valor_hsv.png");
+    containerDownload.appendChild(linkDownload);
+  };
+}
+
 // Aplica uma segmentacao baseada nos canais de Saturacao (S) e Valor (V) do espaço de cor HSV.
-export function aplicarHSV(
+ function aplicarHSV(
   dadosImagem,
   largura,
   altura,
@@ -209,6 +340,49 @@ export function aplicarHSV(
   }
 
   return resultado; // máscara binária 0 ou 255
+}
+
+export function AplicarHSV() {
+  const tela = document.createElement("canvas");
+  tela.classList.add("styled-canva");
+  const contexto = tela.getContext("2d");
+  const imagem = new Image();
+  imagem.src = URL.createObjectURL(curFile);
+
+  imagem.onload = () => {
+    tela.width = imagem.width;
+    tela.height = imagem.height;
+    contexto.drawImage(imagem, 0, 0);
+
+    const dadosImagem = contexto.getImageData(0, 0, tela.width, tela.height);
+    const largura = tela.width;
+    const altura = tela.height;
+
+    // Ajuste os limiares aqui, se desejar
+    const limiarS = 0.5;
+    const limiarV = 0.5;
+
+    const mascaraHSV = aplicarHSV(dadosImagem, largura, altura, limiarS, limiarV);
+
+    // Construir imagem RGBA a partir da máscara (preto e branco)
+    const dadosSaida = new Uint8ClampedArray(dadosImagem.data.length);
+    for (let i = 0, j = 0; i < dadosSaida.length; i += 4, j++) {
+      const val = mascaraHSV[j];
+      dadosSaida[i] = val;       // R
+      dadosSaida[i + 1] = val;   // G
+      dadosSaida[i + 2] = val;   // B
+      dadosSaida[i + 3] = 255;   // Alpha totalmente opaco
+    }
+
+    const novaImagem = new ImageData(dadosSaida, largura, altura);
+    contexto.putImageData(novaImagem, 0, 0);
+    preview.appendChild(tela);
+
+    const containerDownload = document.querySelector(".download-container");
+    containerDownload.innerHTML = "";
+    const linkDownload = createDownloadLink(tela, "imagem_hsv_binaria.png");
+    containerDownload.appendChild(linkDownload);
+  };
 }
 
 export function combinarImagens(dadosLimiarizados, imagemHSV) {
