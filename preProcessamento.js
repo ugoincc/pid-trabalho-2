@@ -397,6 +397,7 @@ export function combinarImagens(dadosLimiarizados, imagemHSV) {
 }
 
 // Realca a fissura atraves da transformada de hat combinada com HSV
+
 export function realcarFissura() {
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
@@ -407,8 +408,8 @@ export function realcarFissura() {
   imagem.onload = () => {
     tela.width = imagem.width;
     tela.height = imagem.height;
-    let largura = tela.width;
-    let altura = tela.height;
+    const largura = tela.width;
+    const altura = tela.height;
     contexto.drawImage(imagem, 0, 0);
 
     const dadosImagem = contexto.getImageData(0, 0, tela.width, tela.height);
@@ -418,30 +419,16 @@ export function realcarFissura() {
       altura
     );
 
-    // -------------------- Convertendo o vetor extraido para escala de cinza -------------------- //
+    // -------------------- Processamento existente -------------------- //
     const dadosCinza = converte_escala_de_cinza(dadosImagem);
-
-    // -------------------- Aplicando a transformada de bottom hat ------------------------------ //
-    const dadosTransformadaHat = transformadaBottomHat(
-      dadosCinza,
-      largura,
-      altura
-    );
-
-    // -------------------- Aplicando limiarizacao a imagem ------------------------------------- //
-    const dadosLimiarizados = limiarizacao_simples(
-      dadosTransformadaHat,
-      currentThreshold
-    );
-
-    // -------------------- Transformando a imagem original de RGB para HSV --------------------- //
+    const dadosTransformadaHat = transformadaBottomHat(dadosCinza, largura, altura);
+    const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat, currentThreshold);
     const imagemHSV = aplicarHSV(dadosImagemCopia, largura, altura, 0.6, 0.6);
-
-    // -------------------- Combinando a imagem 1 (transformada de hat) e a imagem 2 (HSV) ------ //
     let imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);
-
-    // Converte para RGBA
+    // ------------------------------------------------------------------ //
     const dadosRGBA = new Uint8ClampedArray(largura * altura * 4);
+
+  // Usar dados da imagem original para o fundo
     for (let i = 0; i < imagemResultante.length; i++) {
       dadosRGBA[i * 4 + 0] = imagemResultante[i];
       dadosRGBA[i * 4 + 1] = imagemResultante[i];
@@ -449,16 +436,13 @@ export function realcarFissura() {
       dadosRGBA[i * 4 + 3] = 255;
     }
 
-    const novaImagem = new ImageData(dadosRGBA, tela.width, tela.height);
-    contexto.putImageData(novaImagem, 0, 0);
-    preview.appendChild(tela);
+  const novaImagem = new ImageData(dadosRGBA, tela.width, tela.height);
+  contexto.putImageData(novaImagem, 0, 0);
+  preview.appendChild(tela);
 
-    const containerDownload = document.querySelector(".download-container");
-    containerDownload.innerHTML = "";
-    const linkDownload = createDownloadLink(
-      tela,
-      "imagem_fissura_detectada.png"
-    );
-    containerDownload.appendChild(linkDownload);
+  const containerDownload = document.querySelector(".download-container");
+  containerDownload.innerHTML = "";
+  const linkDownload = createDownloadLink(tela, "imagem_fissura_destacada.png");
+  containerDownload.appendChild(linkDownload);
   };
 }
