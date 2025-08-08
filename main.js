@@ -1,4 +1,4 @@
-import { escala_de_cinza, realcarFissuraAprimorada } from "./preProcessamento.js";
+import { escala_de_cinza, realcarFissuraAprimorada, realcarFissuraVerde} from "./preProcessamento.js";
 
 import "./common.js";
 
@@ -27,12 +27,7 @@ export function handleImageFunction(selectedFunction) {
       realcarFissuraAprimorada();
       break;
     case "fun3":
-      reconhecimentoCompleto().catch((error) => {
-        console.error("Erro no reconhecimento completo:", error);
-        const msg = document.createElement("p");
-        msg.textContent = "Erro ao executar reconhecimento: " + error.message;
-        preview.appendChild(msg);
-      });
+      realcarFissuraVerde();
       break;
     default:
       const msg = document.createElement("p");

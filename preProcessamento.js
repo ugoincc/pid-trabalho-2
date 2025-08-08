@@ -171,47 +171,6 @@ function aplicarFechamento(imagemBinaria, largura, altura, tamanhoKernel = 3, it
   return imagemFechada;
 }
 
-// Abertura corrigida (erosão + dilatação)
-function aplicarAbertura(imagemBinaria, largura, altura, tamanhoKernel = 3, iteracoes = 1) {
-  // Primeiro erode para remover ruído
-  //const imagemErodida = aplicarErosaoMelhorada(imagemBinaria, largura, altura, tamanhoKernel, iteracoes);
-  
-  // Depois dilata para restaurar o tamanho
-  const imagemAberta = aplicarDilatacaoMelhorada(imagemBinaria, largura, altura, tamanhoKernel, iteracoes);
-  
-  return imagemAberta;
-}
-
-// Filtro mediano mantém o mesmo
-function aplicarFiltroMediano(imagemBinaria, largura, altura, tamanhoKernel = 3) {
-  const resultado = new Uint8ClampedArray(imagemBinaria.length);
-  const offset = Math.floor(tamanhoKernel / 2);
-  
-  for (let y = offset; y < altura - offset; y++) {
-    for (let x = offset; x < largura - offset; x++) {
-      const vizinhos = [];
-      
-      // Coleta valores dos vizinhos
-      for (let dy = -offset; dy <= offset; dy++) {
-        for (let dx = -offset; dx <= offset; dx++) {
-          const nx = x + dx;
-          const ny = y + dy;
-          const indice = ny * largura + nx;
-          vizinhos.push(imagemBinaria[indice]);
-        }
-      }
-      
-      // Ordena e pega a mediana
-      vizinhos.sort((a, b) => a - b);
-      const mediana = vizinhos[Math.floor(vizinhos.length / 2)];
-      
-      const indiceAtual = y * largura + x;
-      resultado[indiceAtual] = mediana;
-    }
-  }
-  
-  return resultado;
-}
 
 // CORREÇÃO PRINCIPAL: Conectar componentes com RETURN
 function conectarComponentes(imagemBinaria, largura, altura) {
@@ -399,6 +358,50 @@ export function combinarImagens(dadosLimiarizados, imagemHSV) {
   return resultado;
 }
 
+// Versão que remove pixels isolados especificamente
+function removerPixelsIsolados(imagemBinaria, largura, altura) {
+  const resultado = new Uint8ClampedArray(imagemBinaria);
+  let pixelsRemovidos = 0;
+  
+  for (let y = 1; y < altura - 1; y++) {
+    for (let x = 1; x < largura - 1; x++) {
+      const indice = y * largura + x;
+      
+      if (imagemBinaria[indice] === 0) { // Se é pixel preto
+        // Conta vizinhos pretos imediatos (8-conectividade)
+        let vizinhosPretos = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            
+            const nx = x + dx;
+            const ny = y + dy;
+            const indiceViz = ny * largura + nx;
+            
+            if (imagemBinaria[indiceViz] === 0) {
+              vizinhosPretos++;
+            }
+          }
+        }
+        
+        // Se não tem vizinhos pretos, é um pixel isolado
+        if (vizinhosPretos === 0) {
+          resultado[indice] = 255;
+          pixelsRemovidos++;
+        }
+        // Se tem muito poucos vizinhos, também remove
+        else if (vizinhosPretos <= 1) {
+          resultado[indice] = 255;
+          pixelsRemovidos++;
+        }
+      }
+    }
+  }
+  
+  console.log(`🎯 Pixels isolados removidos: ${pixelsRemovidos}`);
+  return resultado;
+}
+
 // Realca a fissura atraves da transformada de hat combinada com HSV
 export function realcarFissuraAprimorada() {
   const tela = document.createElement("canvas");
@@ -432,17 +435,17 @@ export function realcarFissuraAprimorada() {
 
     // -------------------- MELHORIAS MORFOLÓGICAS (versão conservadora) -------------------- //
     
-    // 1. Conecta componentes próximos primeiro
-    imagemResultante = conectarComponentes(imagemResultante, largura, altura);
-    console.log("Após conectar componentes - pixels pretos:", imagemResultante.filter(p => p === 0).length);
+    imagemResultante = removerPixelsIsolados(imagemResultante, largura, altura);
+
     
-    // 2. Fecha lacunas pequenas (mais suave)
-    imagemResultante = aplicarAbertura(imagemResultante, largura, altura, 3, 1);
-    //console.log("Após fechamento - pixels pretos:", imagemResultante.filter(p => p === 0).length);
+    // 3. Fecha lacunas pequenas
+    imagemResultante = aplicarFechamento(imagemResultante, largura, altura, 3, 1);
+
+    // 4. Dilatação leve para engrossar
+    imagemResultante = aplicarDilatacaoMelhorada(imagemResultante, largura, altura, 3, 1);
     
-    // 3. Dilatação leve para engrossar
-    //imagemResultante = aplicarDilatacaoMelhorada(imagemResultante, largura, altura, 3, 1);
-    //console.log("Após dilatação - pixels pretos:", imagemResultante.filter(p => p === 0).length);
+    
+    // 2. Conecta fissuras próxima
 
     // -------------------- Conversão final para RGBA -------------------- //
     const dadosRGBA = new Uint8ClampedArray(largura * altura * 4);
@@ -463,3 +466,79 @@ export function realcarFissuraAprimorada() {
     containerDownload.appendChild(linkDownload);
   };
 }
+
+export function realcarFissuraVerde() {
+  const tela = document.createElement("canvas");
+  tela.classList.add("styled-canva");
+  const contexto = tela.getContext("2d");
+  const imagem = new Image();
+  imagem.src = URL.createObjectURL(curFile);
+
+  imagem.onload = () => {
+    tela.width = imagem.width;
+    tela.height = imagem.height;
+    const largura = tela.width;
+    const altura = tela.height;
+    contexto.drawImage(imagem, 0, 0);
+
+    const dadosImagem = contexto.getImageData(0, 0, tela.width, tela.height);
+    const dadosImagemCopia = new ImageData(
+      new Uint8ClampedArray(dadosImagem.data),
+      largura,
+      altura
+    );
+
+    // -------------------- Processamento existente -------------------- //
+    const dadosCinza = converte_escala_de_cinza(dadosImagem);
+    const dadosTransformadaHat = transformadaBottomHat(dadosCinza, largura, altura);
+    const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat, currentThreshold);
+    const imagemHSV = aplicarHSV(dadosImagemCopia, largura, altura, 0.6, 0.6);
+    let imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);
+
+    console.log("Imagem inicial - pixels pretos:", imagemResultante.filter(p => p === 0).length);
+
+    // -------------------- MELHORIAS MORFOLÓGICAS (versão conservadora) -------------------- //
+    
+    imagemResultante = removerPixelsIsolados(imagemResultante, largura, altura);
+    
+    // 3. Fecha lacunas pequenas
+    imagemResultante = aplicarFechamento(imagemResultante, largura, altura, 3, 1);
+    
+    // 4. Dilatação leve para engrossar
+    imagemResultante = aplicarDilatacaoMelhorada(imagemResultante, largura, altura, 3, 1);
+    
+    // 2. Conecta fissuras próxima
+
+    // -------------------- Conversão final para RGBA -------------------- //
+    const dadosRGBA = new Uint8ClampedArray(largura * altura * 4);
+
+  // Usar dados da imagem original para o fundo
+  for (let i = 0; i < imagemResultante.length; i++) {
+    const indiceRGBA = i * 4;
+    
+    if (imagemResultante[i] === 0) {
+      // Pixel é FISSURA - destacar em VERDE BRILHANTE
+      dadosRGBA[indiceRGBA + 0] = 0;   // Vermelho = 0
+      dadosRGBA[indiceRGBA + 1] = 255; // Verde = 255 (máximo)
+      dadosRGBA[indiceRGBA + 2] = 0;   // Azul = 0
+      dadosRGBA[indiceRGBA + 3] = 255; // Alpha = 255 (opaco)
+    } else {
+      // Pixel é FUNDO - manter cor original da imagem
+      dadosRGBA[indiceRGBA + 0] = dadosImagem.data[indiceRGBA + 0]; // R original
+      dadosRGBA[indiceRGBA + 1] = dadosImagem.data[indiceRGBA + 1]; // G original  
+      dadosRGBA[indiceRGBA + 2] = dadosImagem.data[indiceRGBA + 2]; // B original
+      dadosRGBA[indiceRGBA + 3] = 255; // Alpha = 255 (opaco)
+    }
+  }
+
+  const novaImagem = new ImageData(dadosRGBA, tela.width, tela.height);
+  contexto.putImageData(novaImagem, 0, 0);
+  preview.appendChild(tela);
+
+  const containerDownload = document.querySelector(".download-container");
+  containerDownload.innerHTML = "";
+  const linkDownload = createDownloadLink(tela, "imagem_fissura_verde_destacada.png");
+  containerDownload.appendChild(linkDownload);
+  };
+}
+
