@@ -507,47 +507,37 @@ export function realcarFissuraVerde() {
       altura
     );
 
-    // -------------------- Convertendo o vetor extraido para escala de cinza -------------------- //
+    // Processamento da imagem (mesmo código que você tinha)
     const dadosCinza = converte_escala_de_cinza(dadosImagem);
-
-    // -------------------- Aplicando a transformada de bottom hat ------------------------------ //
-    const dadosTransformadaHat = transformadaBottomHat(
-      dadosCinza,
-      largura,
-      altura
-    );
-
-    // -------------------- Aplicando limiarizacao a imagem ------------------------------------- //
-    const dadosLimiarizados = limiarizacao_simples(
-      dadosTransformadaHat,
-      currentThreshold
-    );
-
-    // -------------------- Transformando a imagem original de RGB para HSV --------------------- //
+    const dadosTransformadaHat = transformadaBottomHat(dadosCinza, largura, altura);
+    const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat, currentThreshold);
     const imagemHSV = aplicarHSV(dadosImagemCopia, largura, altura, 0.6, 0.6);
-
-    // -------------------- Combinando a imagem 1 (transformada de hat) e a imagem 2 (HSV) ------ //
     let imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);
 
-// -------------------- Conversão final para RGBA com destaque VERDE -------------------- //
-    const dadosRGBA = new Uint8ClampedArray(largura * altura * 4);
+    // Cálculo da área da fissura
+    let pixelsFissura = 0;
+    const totalPixels = largura * altura;
+    for (let i = 0; i < imagemResultante.length; i++) {
+      if (imagemResultante[i] === 0) {
+        pixelsFissura++;
+      }
+    }
+    const porcentagem = (pixelsFissura / totalPixels) * 100;
 
-    // Usar dados da imagem original para o fundo
+    // Conversão para RGBA com destaque verde
+    const dadosRGBA = new Uint8ClampedArray(largura * altura * 4);
     for (let i = 0; i < imagemResultante.length; i++) {
       const indiceRGBA = i * 4;
-      
       if (imagemResultante[i] === 0) {
-        // Pixel é FISSURA - destacar em VERDE BRILHANTE
-        dadosRGBA[indiceRGBA + 0] = 0;   // Vermelho = 0
-        dadosRGBA[indiceRGBA + 1] = 255; // Verde = 255 (máximo)
-        dadosRGBA[indiceRGBA + 2] = 0;   // Azul = 0
-        dadosRGBA[indiceRGBA + 3] = 255; // Alpha = 255 (opaco)
+        dadosRGBA[indiceRGBA + 0] = 0;   // R
+        dadosRGBA[indiceRGBA + 1] = 255; // G
+        dadosRGBA[indiceRGBA + 2] = 0;   // B
+        dadosRGBA[indiceRGBA + 3] = 255; // A
       } else {
-        // Pixel é FUNDO - manter cor original da imagem
-        dadosRGBA[indiceRGBA + 0] = dadosImagem.data[indiceRGBA + 0]; // R original
-        dadosRGBA[indiceRGBA + 1] = dadosImagem.data[indiceRGBA + 1]; // G original  
-        dadosRGBA[indiceRGBA + 2] = dadosImagem.data[indiceRGBA + 2]; // B original
-        dadosRGBA[indiceRGBA + 3] = 255; // Alpha = 255 (opaco)
+        dadosRGBA[indiceRGBA + 0] = dadosImagem.data[indiceRGBA + 0];
+        dadosRGBA[indiceRGBA + 1] = dadosImagem.data[indiceRGBA + 1];
+        dadosRGBA[indiceRGBA + 2] = dadosImagem.data[indiceRGBA + 2];
+        dadosRGBA[indiceRGBA + 3] = 255;
       }
     }
 
@@ -555,9 +545,50 @@ export function realcarFissuraVerde() {
     contexto.putImageData(novaImagem, 0, 0);
     preview.appendChild(tela);
 
+    // ABORDAGEM MAIS ROBUSTA: Criar sempre um novo elemento
     const containerDownload = document.querySelector(".download-container");
-    containerDownload.innerHTML = "";
+    
+    // Remover info anterior se existir
+    const infoAnterior = document.querySelector(".resultado-fissura-verde");
+    if (infoAnterior) {
+      infoAnterior.remove();
+    }
+    
+    // Criar novo elemento de resultado
+    const divResultado = document.createElement("div");
+    divResultado.classList.add("resultado-fissura-verde");
+    divResultado.style.cssText = `
+      position: relative;
+      z-index: 1000;
+      background: #bfccc2ff;
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px auto;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+      font-family: Arial, sans-serif;
+      border: 3px solid #cfddd2ff;
+    `;
+    
+    divResultado.innerHTML = `
+      <h2 style="margin: 0 0 15px 0; font-size: 20px;"> FISSURA DETECTADA</h2>
+      <div style="font-size: 36px; font-weight: bold; margin: 15px 0; background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px;">
+        ${porcentagem.toFixed(2)}%
+      </div>
+      <div style="font-size: 14px; margin-top: 10px;">
+        <p><strong>${pixelsFissura.toLocaleString('pt-BR')}</strong> pixels de fissura</p>
+        <p><strong>${totalPixels.toLocaleString('pt-BR')}</strong> pixels totais</p>
+      </div>
+    `;
+    
+    // Inserir ANTES do link de download
     const linkDownload = createDownloadLink(tela, "imagem_fissura_verde_destacada.png");
+    
+    // Inserir no container
+    containerDownload.insertBefore(divResultado, containerDownload.firstChild);
     containerDownload.appendChild(linkDownload);
   };
 }
+
