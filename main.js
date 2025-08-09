@@ -1,4 +1,4 @@
-import { realcarFissura, escala_de_cinza,TransformadaBottomHatImg,TransformarRgbParaHsvImg,AplicarHSVImg,LimiarizacaoSimplesImg } from "./preProcessamento.js";
+import { realcarFissura, escala_de_cinza,TransformadaBottomHatImg,TransformarRgbParaHsvImg,AplicarHSVImg,LimiarizacaoSimplesImg, realcarFissuraVerde } from "./preProcessamento.js";
 
 import "./common.js";
 
@@ -62,6 +62,9 @@ async function executeFunction(selectedFunction) {
         break;
       case "fun6":
         await LimiarizacaoSimplesImg();
+        break;
+      case "fun7":
+        await realcarFissuraVerde();
         break;
       default:
         const msg = document.createElement("p");

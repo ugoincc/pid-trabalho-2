@@ -397,6 +397,28 @@ export function combinarImagens(dadosLimiarizados, imagemHSV) {
   return resultado;
 }
 
+export function calcularPorcentagemAreaFissura(imagemResultante, largura, altura) {
+  let pixelsFissura = 0;
+  const totalPixels = largura * altura;
+  
+  // Conta os pixels que representam fissura (pixels brancos/claros)
+  for (let i = 0; i < imagemResultante.length; i++) {
+    // Considera como fissura pixels com valor próximo ao branco (acima de um limiar)
+    if (imagemResultante[i] > 127) { // Limiar de 127 (meio da escala 0-255)
+      pixelsFissura++;
+    }
+  }
+  
+  // Calcula a porcentagem
+  const porcentagem = (pixelsFissura / totalPixels) * 100;
+  
+  return {
+    pixelsFissura: pixelsFissura,
+    totalPixels: totalPixels,
+    porcentagem: porcentagem.toFixed(2)
+  };
+}
+
 // Realca a fissura atraves da transformada de hat combinada com HSV
 export function realcarFissura() {
   const tela = document.createElement("canvas");
@@ -460,6 +482,82 @@ export function realcarFissura() {
       tela,
       "imagem_fissura_detectada.png"
     );
+    containerDownload.appendChild(linkDownload);
+  };
+}
+
+export function realcarFissuraVerde() {
+  const tela = document.createElement("canvas");
+  tela.classList.add("styled-canva");
+  const contexto = tela.getContext("2d");
+  const imagem = new Image();
+  imagem.src = URL.createObjectURL(curFile);
+
+  imagem.onload = () => {
+    tela.width = imagem.width;
+    tela.height = imagem.height;
+    let largura = tela.width;
+    let altura = tela.height;
+    contexto.drawImage(imagem, 0, 0);
+
+    const dadosImagem = contexto.getImageData(0, 0, tela.width, tela.height);
+    const dadosImagemCopia = new ImageData(
+      new Uint8ClampedArray(dadosImagem.data),
+      largura,
+      altura
+    );
+
+    // -------------------- Convertendo o vetor extraido para escala de cinza -------------------- //
+    const dadosCinza = converte_escala_de_cinza(dadosImagem);
+
+    // -------------------- Aplicando a transformada de bottom hat ------------------------------ //
+    const dadosTransformadaHat = transformadaBottomHat(
+      dadosCinza,
+      largura,
+      altura
+    );
+
+    // -------------------- Aplicando limiarizacao a imagem ------------------------------------- //
+    const dadosLimiarizados = limiarizacao_simples(
+      dadosTransformadaHat,
+      currentThreshold
+    );
+
+    // -------------------- Transformando a imagem original de RGB para HSV --------------------- //
+    const imagemHSV = aplicarHSV(dadosImagemCopia, largura, altura, 0.6, 0.6);
+
+    // -------------------- Combinando a imagem 1 (transformada de hat) e a imagem 2 (HSV) ------ //
+    let imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);
+
+// -------------------- Conversão final para RGBA com destaque VERDE -------------------- //
+    const dadosRGBA = new Uint8ClampedArray(largura * altura * 4);
+
+    // Usar dados da imagem original para o fundo
+    for (let i = 0; i < imagemResultante.length; i++) {
+      const indiceRGBA = i * 4;
+      
+      if (imagemResultante[i] === 0) {
+        // Pixel é FISSURA - destacar em VERDE BRILHANTE
+        dadosRGBA[indiceRGBA + 0] = 0;   // Vermelho = 0
+        dadosRGBA[indiceRGBA + 1] = 255; // Verde = 255 (máximo)
+        dadosRGBA[indiceRGBA + 2] = 0;   // Azul = 0
+        dadosRGBA[indiceRGBA + 3] = 255; // Alpha = 255 (opaco)
+      } else {
+        // Pixel é FUNDO - manter cor original da imagem
+        dadosRGBA[indiceRGBA + 0] = dadosImagem.data[indiceRGBA + 0]; // R original
+        dadosRGBA[indiceRGBA + 1] = dadosImagem.data[indiceRGBA + 1]; // G original  
+        dadosRGBA[indiceRGBA + 2] = dadosImagem.data[indiceRGBA + 2]; // B original
+        dadosRGBA[indiceRGBA + 3] = 255; // Alpha = 255 (opaco)
+      }
+    }
+
+    const novaImagem = new ImageData(dadosRGBA, tela.width, tela.height);
+    contexto.putImageData(novaImagem, 0, 0);
+    preview.appendChild(tela);
+
+    const containerDownload = document.querySelector(".download-container");
+    containerDownload.innerHTML = "";
+    const linkDownload = createDownloadLink(tela, "imagem_fissura_verde_destacada.png");
     containerDownload.appendChild(linkDownload);
   };
 }
