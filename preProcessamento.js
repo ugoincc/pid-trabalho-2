@@ -486,6 +486,100 @@ export function realcarFissura() {
   };
 }
 
+let roi = null;
+
+function selecionarAreaAutomatico(tela, contexto, imagem, onRoiComplete) {
+  // evita gestures no touch
+  tela.style.touchAction = "none";
+
+  let isDrawing = false;
+  let startX = 0;
+  let startY = 0;
+
+  function getScaledPos(e) {
+    const rect = tela.getBoundingClientRect();
+    const scaleX = tela.width / rect.width;
+    const scaleY = tela.height / rect.height;
+    const x = Math.max(0, Math.min(tela.width, Math.floor((e.clientX - rect.left) * scaleX)));
+    const y = Math.max(0, Math.min(tela.height, Math.floor((e.clientY - rect.top) * scaleY)));
+    return { x, y };
+  }
+
+  function onPointerDown(e) {
+    e.preventDefault();
+    tela.setPointerCapture(e.pointerId);
+    isDrawing = true;
+    const p = getScaledPos(e);
+    startX = p.x;
+    startY = p.y;
+  }
+
+  function onPointerMove(e) {
+    if (!isDrawing) return;
+    const p = getScaledPos(e);
+    const w = p.x - startX;
+    const h = p.y - startY;
+
+    // redesenha imagem + retângulo
+    contexto.clearRect(0, 0, tela.width, tela.height);
+    contexto.drawImage(imagem, 0, 0);
+
+    contexto.save();
+    contexto.strokeStyle = "red";
+    contexto.lineWidth = 4;
+    contexto.setLineDash([6, 4]);
+    contexto.strokeRect(startX, startY, w, h);
+    contexto.restore();
+  }
+
+  function onPointerUp(e) {
+    if (!isDrawing) return;
+    isDrawing = false;
+    tela.releasePointerCapture(e.pointerId);
+
+    const p = getScaledPos(e);
+    const endX = p.x;
+    const endY = p.y;
+
+    const x = Math.min(startX, endX);
+    const y = Math.min(startY, endY);
+    const largura = Math.abs(endX - startX);
+    const altura = Math.abs(endY - startY);
+
+    // remove listeners (seleção única). Se quiser permitir várias seleções,
+    // comente as 3 linhas abaixo.
+    //tela.removeEventListener("pointerdown", onPointerDown);
+    //tela.removeEventListener("pointermove", onPointerMove);
+    //tela.removeEventListener("pointerup", onPointerUp);
+    //tela.removeEventListener("pointercancel", onPointerUp);
+
+    // filtro mínimo para evitar zero-sized ROI
+    if (largura < 2 || altura < 2) {
+      // redesenha imagem e volta sem processar
+      contexto.clearRect(0, 0, tela.width, tela.height);
+      contexto.drawImage(imagem, 0, 0);
+      console.warn("ROI muito pequena — selecione uma área maior.");
+      return;
+    }
+
+    roi = {
+      x: Math.max(0, Math.floor(x)),
+      y: Math.max(0, Math.floor(y)),
+      largura: Math.floor(largura),
+      altura: Math.floor(altura),
+    };
+
+    // dá um pequeno delay para o canvas desenhar o retângulo antes do processamento pesado
+    // e para mostrar o indicador de processamento.
+    onRoiComplete(roi);
+  }
+
+  tela.addEventListener("pointerdown", onPointerDown);
+  tela.addEventListener("pointermove", onPointerMove);
+  tela.addEventListener("pointerup", onPointerUp);
+  tela.addEventListener("pointercancel", onPointerUp);
+}
+
 export function realcarFissuraVerde() {
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
@@ -496,99 +590,132 @@ export function realcarFissuraVerde() {
   imagem.onload = () => {
     tela.width = imagem.width;
     tela.height = imagem.height;
-    let largura = tela.width;
-    let altura = tela.height;
     contexto.drawImage(imagem, 0, 0);
-
-    const dadosImagem = contexto.getImageData(0, 0, tela.width, tela.height);
-    const dadosImagemCopia = new ImageData(
-      new Uint8ClampedArray(dadosImagem.data),
-      largura,
-      altura
-    );
-
-    // Processamento da imagem (mesmo código que você tinha)
-    const dadosCinza = converte_escala_de_cinza(dadosImagem);
-    const dadosTransformadaHat = transformadaBottomHat(dadosCinza, largura, altura);
-    const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat, currentThreshold);
-    const imagemHSV = aplicarHSV(dadosImagemCopia, largura, altura, 0.6, 0.6);
-    let imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);
-
-    // Cálculo da área da fissura
-    let pixelsFissura = 0;
-    const totalPixels = largura * altura;
-    for (let i = 0; i < imagemResultante.length; i++) {
-      if (imagemResultante[i] === 0) {
-        pixelsFissura++;
-      }
-    }
-    const porcentagem = (pixelsFissura / totalPixels) * 100;
-
-    // Conversão para RGBA com destaque verde
-    const dadosRGBA = new Uint8ClampedArray(largura * altura * 4);
-    for (let i = 0; i < imagemResultante.length; i++) {
-      const indiceRGBA = i * 4;
-      if (imagemResultante[i] === 0) {
-        dadosRGBA[indiceRGBA + 0] = 0;   // R
-        dadosRGBA[indiceRGBA + 1] = 255; // G
-        dadosRGBA[indiceRGBA + 2] = 0;   // B
-        dadosRGBA[indiceRGBA + 3] = 255; // A
-      } else {
-        dadosRGBA[indiceRGBA + 0] = dadosImagem.data[indiceRGBA + 0];
-        dadosRGBA[indiceRGBA + 1] = dadosImagem.data[indiceRGBA + 1];
-        dadosRGBA[indiceRGBA + 2] = dadosImagem.data[indiceRGBA + 2];
-        dadosRGBA[indiceRGBA + 3] = 255;
-      }
-    }
-
-    const novaImagem = new ImageData(dadosRGBA, tela.width, tela.height);
-    contexto.putImageData(novaImagem, 0, 0);
     preview.appendChild(tela);
 
-    // ABORDAGEM MAIS ROBUSTA: Criar sempre um novo elemento
-    const containerDownload = document.querySelector(".download-container");
-    
-    // Remover info anterior se existir
-    const infoAnterior = document.querySelector(".resultado-fissura-verde");
-    if (infoAnterior) {
-      infoAnterior.remove();
+    // indicador simples de processamento
+    const mostraProcessando = (mostrar) => {
+      let el = document.querySelector(".processando-overlay");
+      if (mostrar) {
+        if (!el) {
+          el = document.createElement("div");
+          el.className = "processando-overlay";
+          el.style.cssText = `
+            position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+            display:flex;align-items:center;justify-content:center;
+            font-size:18px;background:rgba(0,0,0,0.35);color:#fff;
+            z-index:2000; pointer-events:none;
+          `;
+          // inserimos próximo ao preview (assume que preview é container relativo)
+          preview.style.position = "relative";
+          preview.appendChild(el);
+        }
+        el.textContent = "Processando...";
+        el.style.display = "flex";
+      } else {
+        if (el) el.style.display = "none";
+      }
+    };
+
+    function aplicarFiltroNaROI(roiSelecionada) {
+      // mostra indicador e espera tela atualizar para o usuário ver o retângulo
+      mostraProcessando(true);
+      setTimeout(() => {
+        try {
+          const dadosImagem = contexto.getImageData(
+            roiSelecionada.x,
+            roiSelecionada.y,
+            roiSelecionada.largura,
+            roiSelecionada.altura
+          );
+
+          // cópia independente
+          const dadosImagemCopia = new ImageData(
+            new Uint8ClampedArray(dadosImagem.data),
+            roiSelecionada.largura,
+            roiSelecionada.altura
+          );
+
+          // pipeline (suas funções já existentes)
+          const dadosCinza = converte_escala_de_cinza(dadosImagem);
+          const dadosTransformadaHat = transformadaBottomHat(dadosCinza, roiSelecionada.largura, roiSelecionada.altura);
+          const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat, currentThreshold);
+          const imagemHSV = aplicarHSV(dadosImagemCopia, roiSelecionada.largura, roiSelecionada.altura, 0.6, 0.6);
+          const imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);
+
+          // cálculo de fissura e criação RGBA
+          let pixelsFissura = 0;
+          const totalPixels = roiSelecionada.largura * roiSelecionada.altura;
+          const dadosRGBA = new Uint8ClampedArray(totalPixels * 4);
+
+          for (let i = 0; i < imagemResultante.length; i++) {
+            const idxRGBA = i * 4;
+            if (imagemResultante[i] === 0) {
+              pixelsFissura++;
+              dadosRGBA[idxRGBA] = 0;
+              dadosRGBA[idxRGBA + 1] = 255;
+              dadosRGBA[idxRGBA + 2] = 0;
+              dadosRGBA[idxRGBA + 3] = 255;
+            } else {
+              dadosRGBA[idxRGBA] = dadosImagem.data[idxRGBA];
+              dadosRGBA[idxRGBA + 1] = dadosImagem.data[idxRGBA + 1];
+              dadosRGBA[idxRGBA + 2] = dadosImagem.data[idxRGBA + 2];
+              dadosRGBA[idxRGBA + 3] = 255;
+            }
+          }
+
+          const novaImagemROI = new ImageData(dadosRGBA, roiSelecionada.largura, roiSelecionada.altura);
+          contexto.putImageData(novaImagemROI, roiSelecionada.x, roiSelecionada.y);
+
+          // EXIBIÇÃO DO RESULTADO (mesma estrutura que você já usa)
+          const containerDownload = document.querySelector(".download-container") || document.body;
+          const infoAnterior = document.querySelector(".resultado-fissura-verde");
+          if (infoAnterior) infoAnterior.remove();
+
+          const divResultado = document.createElement("div");
+          divResultado.classList.add("resultado-fissura-verde");
+          divResultado.style.cssText = `
+            position: relative;
+            z-index: 1000;
+            background: #bfccc2ff;
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px auto;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+            font-family: Arial, sans-serif;
+            border: 3px solid #cfddd2ff;
+          `;
+
+          const porcentagem = (pixelsFissura / totalPixels) * 100;
+
+          divResultado.innerHTML = `
+            <h2 style="margin: 0 0 15px 0; font-size: 20px;">FISSURA DETECTADA NA ÁREA SELECIONADA</h2>
+            <div style="font-size: 36px; font-weight: bold; margin: 15px 0; background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px;">
+              ${porcentagem.toFixed(2)}%
+            </div>
+            <div style="font-size: 14px; margin-top: 10px;">
+              <p><strong>${pixelsFissura.toLocaleString('pt-BR')}</strong> pixels de fissura</p>
+              <p><strong>${totalPixels.toLocaleString('pt-BR')}</strong> pixels totais</p>
+            </div>
+          `;
+
+          const linkDownload = createDownloadLink(tela, "imagem_fissura_verde_destacada.png");
+          containerDownload.insertBefore(divResultado, containerDownload.firstChild);
+          containerDownload.appendChild(linkDownload);
+        } catch (err) {
+          console.error("Erro ao processar ROI:", err);
+          alert("Ocorreu um erro durante o processamento. Veja o console para detalhes.");
+        } finally {
+          mostraProcessando(false);
+        }
+      }, 50); // 50ms para permitir que o retângulo seja desenhado antes do processamento
     }
-    
-    // Criar novo elemento de resultado
-    const divResultado = document.createElement("div");
-    divResultado.classList.add("resultado-fissura-verde");
-    divResultado.style.cssText = `
-      position: relative;
-      z-index: 1000;
-      background: #bfccc2ff;
-      color: white;
-      padding: 20px;
-      border-radius: 12px;
-      margin: 20px auto;
-      max-width: 400px;
-      text-align: center;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-      font-family: Arial, sans-serif;
-      border: 3px solid #cfddd2ff;
-    `;
-    
-    divResultado.innerHTML = `
-      <h2 style="margin: 0 0 15px 0; font-size: 20px;"> FISSURA DETECTADA</h2>
-      <div style="font-size: 36px; font-weight: bold; margin: 15px 0; background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px;">
-        ${porcentagem.toFixed(2)}%
-      </div>
-      <div style="font-size: 14px; margin-top: 10px;">
-        <p><strong>${pixelsFissura.toLocaleString('pt-BR')}</strong> pixels de fissura</p>
-        <p><strong>${totalPixels.toLocaleString('pt-BR')}</strong> pixels totais</p>
-      </div>
-    `;
-    
-    // Inserir ANTES do link de download
-    const linkDownload = createDownloadLink(tela, "imagem_fissura_verde_destacada.png");
-    
-    // Inserir no container
-    containerDownload.insertBefore(divResultado, containerDownload.firstChild);
-    containerDownload.appendChild(linkDownload);
+
+    // inicia seleção e faz processamento automático ao soltar
+    selecionarAreaAutomatico(tela, contexto, imagem, aplicarFiltroNaROI);
   };
 }
 
