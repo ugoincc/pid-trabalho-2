@@ -39,6 +39,14 @@ input.addEventListener("change", () => {
   curFile = input.files[0];
   updatePrimaryImageDisplay(curFile);
   displayOriginalImage(curFile);
+
+  const selectedFunction = functionSelector.value;
+  if (selectedFunction && selectedFunction !== "") {
+    const event = new CustomEvent("functionChanged", {
+      detail: selectedFunction,
+    });
+    document.dispatchEvent(event);
+  }
 });
 
 functionSelector.addEventListener("change", () => {
