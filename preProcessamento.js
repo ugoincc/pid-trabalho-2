@@ -514,41 +514,42 @@ function identificarOrientacaoFissura(imagemResultante, largura, altura) {
   }
 }
 
-let roi = null;
+let regiao_selecionada = null;
 
-function selecionarAreaAutomatico(tela, contexto, imagem, onRoiComplete) {
-  // evita gestures no touch
-  tela.style.touchAction = "none";
+function selecionarAreaAutomatico(tela, contexto, imagem, processarAreaSelecionada) {
 
-  let isDrawing = false;
-  let startX = 0;
-  let startY = 0;
+  let selecionando = false;
+  let eixoX = 0;
+  let eixoY = 0;
 
-  function getScaledPos(e) {
+  // obtem a posicao do correta do cursor
+  function obterPosicaoRealCursor(evento) {
     const rect = tela.getBoundingClientRect();
-    const scaleX = tela.width / rect.width;
-    const scaleY = tela.height / rect.height;
-    const x = Math.max(0, Math.min(tela.width, Math.floor((e.clientX - rect.left) * scaleX)));
-    const y = Math.max(0, Math.min(tela.height, Math.floor((e.clientY - rect.top) * scaleY)));
+    const escalaX = tela.width / rect.width;
+    const escalaY = tela.height / rect.height;
+    const x = Math.max(0, Math.min(tela.width, Math.floor((evento.clientX - rect.left) * escalaX)));
+    const y = Math.max(0, Math.min(tela.height, Math.floor((evento.clientY - rect.top) * escalaY)));
     return { x, y };
   }
 
-  function onPointerDown(e) {
-    e.preventDefault();
-    tela.setPointerCapture(e.pointerId);
-    isDrawing = true;
-    const p = getScaledPos(e);
-    startX = p.x;
-    startY = p.y;
+  // trata o evento de pressionar o cursor
+  function pressionarCursor(evento) {
+    evento.preventDefault();
+    tela.setPointerCapture(evento.pointerId);
+    selecionando = true;
+    const posicao = obterPosicaoRealCursor(evento);
+    eixoX = posicao.x;
+    eixoY = posicao.y;
   }
 
-  function onPointerMove(e) {
-    if (!isDrawing) return;
-    const p = getScaledPos(e);
-    const w = p.x - startX;
-    const h = p.y - startY;
+  // trata o evento de movimentacao do cursor
+  function tratarMovimentacaoCursor(evento) {
+    if (!selecionando) return;
+    const posicao = obterPosicaoRealCursor(evento);
+    const largura = posicao.x - eixoX;
+    const altura = posicao.y - eixoY;
 
-    // redesenha imagem + retângulo
+    // redesenha imagem + retangulo
     contexto.clearRect(0, 0, tela.width, tela.height);
     contexto.drawImage(imagem, 0, 0);
 
@@ -556,41 +557,35 @@ function selecionarAreaAutomatico(tela, contexto, imagem, onRoiComplete) {
     contexto.strokeStyle = "red";
     contexto.lineWidth = 4;
     contexto.setLineDash([6, 4]);
-    contexto.strokeRect(startX, startY, w, h);
+    contexto.strokeRect(eixoX, eixoY, largura, altura);
     contexto.restore();
   }
 
-  function onPointerUp(e) {
-    if (!isDrawing) return;
-    isDrawing = false;
-    tela.releasePointerCapture(e.pointerId);
+  // trata o evento de soltar o cursor, ajustando a selecao
+  function soltarCursor(evento) {
+    if (!selecionando) return;
+    selecionando = false;
+    tela.releasePointerCapture(evento.pointerId);
 
-    const p = getScaledPos(e);
-    const endX = p.x;
-    const endY = p.y;
+    const posicao = obterPosicaoRealCursor(evento);
+    const endX = posicao.x;
+    const endY = posicao.y;
 
-    const x = Math.min(startX, endX);
-    const y = Math.min(startY, endY);
-    const largura = Math.abs(endX - startX);
-    const altura = Math.abs(endY - startY);
+    const x = Math.min(eixoX, endX);
+    const y = Math.min(eixoY, endY);
+    const largura = Math.abs(endX - eixoX);
+    const altura = Math.abs(endY - eixoY);
 
-    // remove listeners (seleção única). Se quiser permitir várias seleções,
-    // comente as 3 linhas abaixo.
-    //tela.removeEventListener("pointerdown", onPointerDown);
-    //tela.removeEventListener("pointermove", onPointerMove);
-    //tela.removeEventListener("pointerup", onPointerUp);
-    //tela.removeEventListener("pointercancel", onPointerUp);
-
-    // filtro mínimo para evitar zero-sized ROI
+    // filtro mínimo para evitar que a regiao selecionada apresente tamanho 0
     if (largura < 2 || altura < 2) {
       // redesenha imagem e volta sem processar
       contexto.clearRect(0, 0, tela.width, tela.height);
       contexto.drawImage(imagem, 0, 0);
-      console.warn("ROI muito pequena — selecione uma área maior.");
+      console.warn("A região selecionada é muito pequena — selecione uma área maior.");
       return;
     }
 
-    roi = {
+    regiao_selecionada = {
       x: Math.max(0, Math.floor(x)),
       y: Math.max(0, Math.floor(y)),
       largura: Math.floor(largura),
@@ -599,13 +594,13 @@ function selecionarAreaAutomatico(tela, contexto, imagem, onRoiComplete) {
 
     // dá um pequeno delay para o canvas desenhar o retângulo antes do processamento pesado
     // e para mostrar o indicador de processamento.
-    onRoiComplete(roi);
+    processarAreaSelecionada(regiao_selecionada);
   }
 
-  tela.addEventListener("pointerdown", onPointerDown);
-  tela.addEventListener("pointermove", onPointerMove);
-  tela.addEventListener("pointerup", onPointerUp);
-  tela.addEventListener("pointercancel", onPointerUp);
+  tela.addEventListener("pointerdown", pressionarCursor);
+  tela.addEventListener("pointermove", tratarMovimentacaoCursor);
+  tela.addEventListener("pointerup", soltarCursor);
+  tela.addEventListener("pointercancel", soltarCursor);
 }
 
 export function realcarFissuraVerde() {
@@ -645,35 +640,43 @@ export function realcarFissuraVerde() {
       }
     };
 
-    function aplicarFiltroNaROI(roiSelecionada) {
+    function aplicarFiltroRegiaoSelecionada(regiaoSelecionada) {
       // mostra indicador e espera tela atualizar para o usuário ver o retângulo
       mostraProcessando(true);
       setTimeout(() => {
         try {
           const dadosImagem = contexto.getImageData(
-            roiSelecionada.x,
-            roiSelecionada.y,
-            roiSelecionada.largura,
-            roiSelecionada.altura
+            regiaoSelecionada.x,
+            regiaoSelecionada.y,
+            regiaoSelecionada.largura,
+            regiaoSelecionada.altura
           );
 
-          // cópia independente
+          // imagem selecionada
           const dadosImagemCopia = new ImageData(
             new Uint8ClampedArray(dadosImagem.data),
-            roiSelecionada.largura,
-            roiSelecionada.altura
+            regiaoSelecionada.largura,
+            regiaoSelecionada.altura
           );
 
-          // pipeline (suas funções já existentes)
+          // -------------------- Convertendo o vetor extraido para escala de cinza -------------------- //
           const dadosCinza = converte_escala_de_cinza(dadosImagem);
-          const dadosTransformadaHat = transformadaBottomHat(dadosCinza, roiSelecionada.largura, roiSelecionada.altura);
+
+          // -------------------- Aplicando a transformada de bottom hat ------------------------------ //
+          const dadosTransformadaHat = transformadaBottomHat(dadosCinza, regiaoSelecionada.largura, regiaoSelecionada.altura);
+
+          // -------------------- Aplicando limiarizacao a imagem ------------------------------------- //
           const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat, currentThreshold);
-          const imagemHSV = aplicarHSV(dadosImagemCopia, roiSelecionada.largura, roiSelecionada.altura, 0.6, 0.6);
+
+          // -------------------- Transformando a imagem original de RGB para HSV --------------------- //
+          const imagemHSV = aplicarHSV(dadosImagemCopia, regiaoSelecionada.largura, regiaoSelecionada.altura, 0.6, 0.6);
+
+          // -------------------- Combinando a imagem 1 (transformada de hat) e a imagem 2 (HSV) ------ //
           const imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);
 
-          // cálculo de fissura e criação RGBA
+          // calculo de fissura e criação RGBA
           let pixelsFissura = 0;
-          const totalPixels = roiSelecionada.largura * roiSelecionada.altura;
+          const totalPixels = regiaoSelecionada.largura * regiaoSelecionada.altura;
           const dadosRGBA = new Uint8ClampedArray(totalPixels * 4);
 
           for (let i = 0; i < imagemResultante.length; i++) {
@@ -692,11 +695,10 @@ export function realcarFissuraVerde() {
             }
           }
 
-          const orientacao = identificarOrientacaoFissura(imagemResultante, roiSelecionada.largura, roiSelecionada.altura);
-          const novaImagemROI = new ImageData(dadosRGBA, roiSelecionada.largura, roiSelecionada.altura);
-          contexto.putImageData(novaImagemROI, roiSelecionada.x, roiSelecionada.y);
+          const orientacao = identificarOrientacaoFissura(imagemResultante, regiaoSelecionada.largura, regiaoSelecionada.altura);
+          const novaImagemRegiaoSelecionada = new ImageData(dadosRGBA, regiaoSelecionada.largura, regiaoSelecionada.altura);
+          contexto.putImageData(novaImagemRegiaoSelecionada, regiaoSelecionada.x, regiaoSelecionada.y);
 
-          // EXIBIÇÃO DO RESULTADO (mesma estrutura que você já usa)
           const containerDownload = document.querySelector(".download-container") || document.body;
           const infoAnterior = document.querySelector(".resultado-fissura-verde");
           if (infoAnterior) infoAnterior.remove();
@@ -736,16 +738,16 @@ export function realcarFissuraVerde() {
           containerDownload.insertBefore(divResultado, containerDownload.firstChild);
           containerDownload.appendChild(linkDownload);
         } catch (err) {
-          console.error("Erro ao processar ROI:", err);
+          console.error("Erro ao processar Regiao Selecionada", err);
           alert("Ocorreu um erro durante o processamento. Veja o console para detalhes.");
         } finally {
           mostraProcessando(false);
         }
-      }, 50); // 50ms para permitir que o retângulo seja desenhado antes do processamento
+      }, 50); // 50ms para permitir que o retangulo seja desenhado antes do processamento
     }
 
-    // inicia seleção e faz processamento automático ao soltar
-    selecionarAreaAutomatico(tela, contexto, imagem, aplicarFiltroNaROI);
+    // inicia selecao e faz processamento automatico ao soltar
+    selecionarAreaAutomatico(tela, contexto, imagem, aplicarFiltroRegiaoSelecionada);
   };
 }
 
