@@ -486,6 +486,34 @@ export function realcarFissura() {
   };
 }
 
+// Função separada para identificar orientação
+function identificarOrientacaoFissura(imagemResultante, largura, altura) {
+  let minX = largura, maxX = 0;
+  let minY = altura, maxY = 0;
+
+  for (let i = 0; i < imagemResultante.length; i++) {
+    if (imagemResultante[i] === 0) { // pixel de fissura
+      const x = i % largura;
+      const y = Math.floor(i / largura);
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+
+  const larguraFissura = maxX - minX;
+  const alturaFissura = maxY - minY;
+
+  if (larguraFissura > alturaFissura) {
+    return "Horizontal";
+  } else if (alturaFissura > larguraFissura) {
+    return "Vertical";
+  } else {
+    return "Diagonal";
+  }
+}
+
 let roi = null;
 
 function selecionarAreaAutomatico(tela, contexto, imagem, onRoiComplete) {
@@ -664,6 +692,7 @@ export function realcarFissuraVerde() {
             }
           }
 
+          const orientacao = identificarOrientacaoFissura(imagemResultante, roiSelecionada.largura, roiSelecionada.altura);
           const novaImagemROI = new ImageData(dadosRGBA, roiSelecionada.largura, roiSelecionada.altura);
           contexto.putImageData(novaImagemROI, roiSelecionada.x, roiSelecionada.y);
 
@@ -699,6 +728,7 @@ export function realcarFissuraVerde() {
             <div style="font-size: 14px; margin-top: 10px;">
               <p><strong>${pixelsFissura.toLocaleString('pt-BR')}</strong> pixels de fissura</p>
               <p><strong>${totalPixels.toLocaleString('pt-BR')}</strong> pixels totais</p>
+              <p><strong>Orientação:</strong> ${orientacao}</p>
             </div>
           `;
 
