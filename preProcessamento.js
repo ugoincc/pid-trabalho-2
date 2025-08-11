@@ -751,3 +751,222 @@ export function realcarFissuraVerde() {
   };
 }
 
+// Funcao para transformar o vetor de dados em uma matriz de pixels, onde cada pixel e um objeto com propriedades red, green, blue e gray
+// pre-condicao: data e um vetor de dados de imagem e width e height sao as dimensoes da imagem
+// pos-condicao: retorna uma matriz de pixels
+function transformarVetorMatriz(data, largura, altura) {
+  const matrix = [];
+  for (let i = 0; i < altura; i++) {
+    const row = [];
+    for (let j = 0; j < largura; j++) {
+      const index = (i * largura + j) * 4;
+      const vermelho = data[index];
+      const verde = data[index + 1];
+      const azul = data[index + 2];
+      const opacidade = 255;
+      const pixel = {
+        vermelho: vermelho,
+        verde: verde,
+        azul: azul,
+        opacidade: opacidade,
+      };
+
+      row.push(pixel);
+    }
+    matrix.push(row);
+  }
+  return matrix;
+}
+
+// Funcao para encontrar a mediana de um pixel em uma matriz 5x5
+// pre-condicao: matriz e uma matriz de pixels e i e j sao as coordenadas do pixel
+// pos-condicao: retorna a mediana dos valores dos pixels vizinhos
+function encontrarMediana(matriz, i, j) {
+  const valores = [];
+  for (let y = 0; y < 5; y++) {
+    for (let x = 0; x < 5; x++) {
+      const pixel = matriz[i + y][j + x];
+      valores.push(pixel.vermelho);
+    }
+  }
+  valores.sort((a, b) => a - b);
+  const mediana = Math.round(valores[Math.floor(valores.length / 2)]);
+  return mediana;
+}
+
+function aplicarFiltroMediana(imagemRGBA, largura, altura) {
+  // Converte vetor para matriz de pixels
+  const matriz = transformarVetorMatriz(imagemRGBA, largura, altura);
+
+  const novaLargura = largura - 4;
+  const novaAltura = altura - 4;
+  const resultadoMediana = new Uint8ClampedArray(novaLargura * novaAltura * 4);
+
+  for (let i = 0; i < novaAltura; i++) {
+    for (let j = 0; j < novaLargura; j++) {
+      // Aqui uso i, j para percorrer a matriz original começando em (i,j)
+      const mediana = encontrarMediana(matriz, i, j);
+
+      const idxResultado = (i * novaLargura + j) * 4;
+      // Aplico mediana nos 3 canais para manter cor
+      resultadoMediana[idxResultado] = mediana;        // vermelho
+      resultadoMediana[idxResultado + 1] = mediana;    // verde
+      resultadoMediana[idxResultado + 2] = mediana;    // azul
+      resultadoMediana[idxResultado + 3] = 255;        // alfa fixo
+    }
+  }
+
+  return { data: resultadoMediana, largura: novaLargura, altura: novaAltura };
+}
+
+export function realcarFissuraVerdeComSuavizacao() {
+  const tela = document.createElement("canvas");
+  tela.classList.add("styled-canva");
+  const contexto = tela.getContext("2d");
+  const imagem = new Image();
+  imagem.src = URL.createObjectURL(curFile);
+
+  imagem.onload = () => {
+    tela.width = imagem.width;
+    tela.height = imagem.height;
+    contexto.drawImage(imagem, 0, 0);
+    preview.appendChild(tela);
+
+    // indicador simples de processamento
+    const mostraProcessando = (mostrar) => {
+      let el = document.querySelector(".processando-overlay");
+      if (mostrar) {
+        if (!el) {
+          el = document.createElement("div");
+          el.className = "processando-overlay";
+          el.style.cssText = `
+            position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+            display:flex;align-items:center;justify-content:center;
+            font-size:18px;background:rgba(0,0,0,0.35);color:#fff;
+            z-index:2000; pointer-events:none;
+          `;
+          // inserimos próximo ao preview (assume que preview é container relativo)
+          preview.style.position = "relative";
+          preview.appendChild(el);
+        }
+        el.textContent = "Processando...";
+        el.style.display = "flex";
+      } else {
+        if (el) el.style.display = "none";
+      }
+    };
+
+    function aplicarFiltroRegiaoSelecionada(regiaoSelecionada) {
+      // mostra indicador e espera tela atualizar para o usuário ver o retângulo
+      mostraProcessando(true);
+      setTimeout(() => {
+        try {
+          const dadosImagem = contexto.getImageData(
+            regiaoSelecionada.x,
+            regiaoSelecionada.y,
+            regiaoSelecionada.largura,
+            regiaoSelecionada.altura
+          );
+
+          // imagem selecionada
+          const dadosImagemCopia = new ImageData(
+            new Uint8ClampedArray(dadosImagem.data),
+            regiaoSelecionada.largura,
+            regiaoSelecionada.altura
+          );
+
+          // -------------------- Convertendo o vetor extraido para escala de cinza -------------------- //
+          const dadosCinza = converte_escala_de_cinza(dadosImagem);
+
+          // -------------------- Aplicando a transformada de bottom hat ------------------------------ //
+          const dadosTransformadaHat = transformadaBottomHat(dadosCinza, regiaoSelecionada.largura, regiaoSelecionada.altura);
+
+          // -------------------- Aplicando limiarizacao a imagem ------------------------------------- //
+          const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat, currentThreshold);
+
+          // -------------------- Transformando a imagem original de RGB para HSV --------------------- //
+          const imagemHSV = aplicarHSV(dadosImagemCopia, regiaoSelecionada.largura, regiaoSelecionada.altura, 0.6, 0.6);
+
+          // -------------------- Combinando a imagem 1 (transformada de hat) e a imagem 2 (HSV) ------ //
+          const imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);
+
+          // -------------------- Suavizando a imagem com filtro da mediana -------------------------- //
+          const imagemResultanteSuavizada = aplicarFiltroMediana(imagemResultante, regiaoSelecionada.largura, regiaoSelecionada.altura);
+           
+          // calculo de fissura e criação RGBA
+          let pixelsFissura = 0;
+          const totalPixels = regiaoSelecionada.largura * regiaoSelecionada.altura;
+          const dadosRGBA = new Uint8ClampedArray(totalPixels * 4);
+
+          for (let i = 0; i < imagemResultanteSuavizada.length; i++) {
+            const idxRGBA = i * 4;
+            if (imagemResultanteSuavizada[i] === 0) {
+              pixelsFissura++;
+              dadosRGBA[idxRGBA] = 0;
+              dadosRGBA[idxRGBA + 1] = 255;
+              dadosRGBA[idxRGBA + 2] = 0;
+              dadosRGBA[idxRGBA + 3] = 255;
+            } else {
+              dadosRGBA[idxRGBA] = dadosImagem.data[idxRGBA];
+              dadosRGBA[idxRGBA + 1] = dadosImagem.data[idxRGBA + 1];
+              dadosRGBA[idxRGBA + 2] = dadosImagem.data[idxRGBA + 2];
+              dadosRGBA[idxRGBA + 3] = 255;
+            }
+          }
+
+          const orientacao = identificarOrientacaoFissura(imagemResultanteSuavizada, regiaoSelecionada.largura, regiaoSelecionada.altura);
+          const novaImagemRegiaoSelecionada = new ImageData(dadosRGBA, regiaoSelecionada.largura, regiaoSelecionada.altura);
+          contexto.putImageData(novaImagemRegiaoSelecionada, regiaoSelecionada.x, regiaoSelecionada.y);
+
+          const containerDownload = document.querySelector(".download-container") || document.body;
+          const infoAnterior = document.querySelector(".resultado-fissura-verde");
+          if (infoAnterior) infoAnterior.remove();
+
+          const divResultado = document.createElement("div");
+          divResultado.classList.add("resultado-fissura-verde");
+          divResultado.style.cssText = `
+            position: relative;
+            z-index: 1000;
+            background: #bfccc2ff;
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px auto;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+            font-family: Arial, sans-serif;
+            border: 3px solid #cfddd2ff;
+          `;
+
+          const porcentagem = (pixelsFissura / totalPixels) * 100;
+
+          divResultado.innerHTML = `
+            <h2 style="margin: 0 0 15px 0; font-size: 20px;">FISSURA DETECTADA NA ÁREA SELECIONADA</h2>
+            <div style="font-size: 36px; font-weight: bold; margin: 15px 0; background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px;">
+              ${porcentagem.toFixed(2)}%
+            </div>
+            <div style="font-size: 14px; margin-top: 10px;">
+              <p><strong>${pixelsFissura.toLocaleString('pt-BR')}</strong> pixels de fissura</p>
+              <p><strong>${totalPixels.toLocaleString('pt-BR')}</strong> pixels totais</p>
+              <p><strong>Orientação:</strong> ${orientacao}</p>
+            </div>
+          `;
+
+          const linkDownload = createDownloadLink(tela, "imagem_fissura_verde_destacada.png");
+          containerDownload.insertBefore(divResultado, containerDownload.firstChild);
+          containerDownload.appendChild(linkDownload);
+        } catch (err) {
+          console.error("Erro ao processar Regiao Selecionada", err);
+          alert("Ocorreu um erro durante o processamento. Veja o console para detalhes.");
+        } finally {
+          mostraProcessando(false);
+        }
+      }, 50); // 50ms para permitir que o retangulo seja desenhado antes do processamento
+    }
+
+    // inicia selecao e faz processamento automatico ao soltar
+    selecionarAreaAutomatico(tela, contexto, imagem, aplicarFiltroRegiaoSelecionada);
+  };
+}
+

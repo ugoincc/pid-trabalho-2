@@ -1,4 +1,4 @@
-import { realcarFissura, escala_de_cinza,TransformadaBottomHatImg,TransformarRgbParaHsvImg,AplicarHSVImg,LimiarizacaoSimplesImg, realcarFissuraVerde } from "./preProcessamento.js";
+import { realcarFissura, escala_de_cinza,TransformadaBottomHatImg,TransformarRgbParaHsvImg,AplicarHSVImg,LimiarizacaoSimplesImg, realcarFissuraVerde, realcarFissuraVerdeComSuavizacao } from "./preProcessamento.js";
 
 import "./common.js";
 
@@ -66,6 +66,8 @@ async function executeFunction(selectedFunction) {
       case "fun7":
         await realcarFissuraVerde();
         break;
+      case "fun8":
+        await realcarFissuraVerdeComSuavizacao()
       default:
         const msg = document.createElement("p");
         msg.textContent = "Nenhuma função selecionada.";
