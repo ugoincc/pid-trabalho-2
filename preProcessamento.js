@@ -529,7 +529,7 @@ function identificarOrientacaoFissura(imagemResultante, largura, altura) {
   }
 }
 
-let regiao_selecionada = null;
+let regiao_selecionada = null; // pq????
 
 function selecionarAreaAutomatico(
   tela,
@@ -827,68 +827,53 @@ export function realcarFissuraVerde() {
   };
 }
 
-// Funcao para transformar o vetor de dados em uma matriz de pixels, onde cada pixel e um objeto com propriedades red, green, blue e gray
-// pre-condicao: data e um vetor de dados de imagem e width e height sao as dimensoes da imagem
-// pos-condicao: retorna uma matriz de pixels
-function transformarVetorMatriz(data, largura, altura) {
-  const matrix = [];
-  for (let i = 0; i < altura; i++) {
-    const row = [];
-    for (let j = 0; j < largura; j++) {
-      const index = (i * largura + j) * 4;
-      const vermelho = data[index];
-      const verde = data[index + 1];
-      const azul = data[index + 2];
-      const opacidade = 255;
-      const pixel = {
-        vermelho: vermelho,
-        verde: verde,
-        azul: azul,
-        opacidade: opacidade,
-      };
+//Funções p/ Mediana
 
-      row.push(pixel);
+// Funcao para transformar um vetor de dados de imagem em escala de cinza em uma matriz 2D.
+// pre-condicao: 'data' e um vetor de dados de imagem de canal unico (Uint8ClampedArray) e 'largura' e 'altura' sao as dimensoes da imagem.
+// pos-condicao: retorna uma matriz (array de arrays) onde cada elemento e um valor de intensidade (0-255).
+function transformarVetorMatrizCinza(data, largura, altura) {
+  const matriz = [];
+  for (let i = 0; i < altura; i++) {
+    const linha = [];
+    for (let j = 0; j < largura; j++) {
+      const index = i * largura + j;
+      linha.push(data[index]);
     }
-    matrix.push(row);
+    matriz.push(linha);
   }
-  return matrix;
+  return matriz;
 }
 
-// Funcao para encontrar a mediana de um pixel em uma matriz 5x5
-// pre-condicao: matriz e uma matriz de pixels e i e j sao as coordenadas do pixel
-// pos-condicao: retorna a mediana dos valores dos pixels vizinhos
-function encontrarMediana(matriz, i, j) {
+// Funcao para encontrar o valor mediano dos pixels em uma vizinhança 5x5 de uma matriz em escala de cinza.
+// pre-condicao: 'matriz' e uma matriz 2D de valores de intensidade, 'i' e 'j' sao as coordenadas do canto superior esquerdo da janela 5x5.
+// pos-condicao: retorna o valor mediano (0-255) dos pixels na vizinhança.
+function encontrarMedianaCinza(matriz, i, j) {
   const valores = [];
   for (let y = 0; y < 5; y++) {
     for (let x = 0; x < 5; x++) {
-      const pixel = matriz[i + y][j + x];
-      valores.push(pixel.vermelho);
+      valores.push(matriz[i + y][j + x]);
     }
   }
   valores.sort((a, b) => a - b);
-  const mediana = Math.round(valores[Math.floor(valores.length / 2)]);
-  return mediana;
+  return valores[Math.floor(valores.length / 2)];
 }
 
-function aplicarFiltroMediana(imagemRGBA, largura, altura) {
+// Funcao para aplicar o filtro de mediana 5x5 em uma imagem de canal unico.
+// pre-condicao: 'imagemCinza' e o vetor de dados da imagem em escala de cinza, e 'largura' e 'altura' sao suas dimensoes.
+// pos-condicao: retorna um objeto contendo o novo vetor de dados da imagem filtrada ('data'), a nova largura ('largura') e a nova altura ('altura'), que sao menores devido ao tratamento de borda.
+function aplicarFiltroMedianaCinza(imagemCinza, largura, altura) {
   // Converte vetor para matriz de pixels
-  const matriz = transformarVetorMatriz(imagemRGBA, largura, altura);
-
+  const matriz = transformarVetorMatrizCinza(imagemCinza, largura, altura);
   const novaLargura = largura - 4;
   const novaAltura = altura - 4;
-  const resultadoMediana = new Uint8ClampedArray(novaLargura * novaAltura * 4);
+  const resultadoMediana = new Uint8ClampedArray(novaLargura * novaAltura);
 
   for (let i = 0; i < novaAltura; i++) {
     for (let j = 0; j < novaLargura; j++) {
-      // Aqui uso i, j para percorrer a matriz original começando em (i,j)
-      const mediana = encontrarMediana(matriz, i, j);
-
-      const idxResultado = (i * novaLargura + j) * 4;
-      // Aplico mediana nos 3 canais para manter cor
-      resultadoMediana[idxResultado] = mediana; // vermelho
-      resultadoMediana[idxResultado + 1] = mediana; // verde
-      resultadoMediana[idxResultado + 2] = mediana; // azul
-      resultadoMediana[idxResultado + 3] = 255; // alfa fixo
+      const mediana = encontrarMedianaCinza(matriz, i, j);
+      const idxResultado = i * novaLargura + j;
+      resultadoMediana[idxResultado] = mediana;
     }
   }
 
@@ -983,7 +968,11 @@ export function realcarFissuraVerdeComSuavizacao() {
           );
 
           // -------------------- Suavizando a imagem com filtro da mediana -------------------------- //
-          const imagemResultanteSuavizada = aplicarFiltroMediana(
+          const {
+            data: imagemSuavizada,
+            largura: larguraSuavizada,
+            altura: alturaSuavizada,
+          } = aplicarFiltroMedianaCinza(
             imagemResultante,
             regiaoSelecionada.largura,
             regiaoSelecionada.altura
@@ -995,32 +984,36 @@ export function realcarFissuraVerdeComSuavizacao() {
             regiaoSelecionada.largura * regiaoSelecionada.altura;
           const dadosRGBA = new Uint8ClampedArray(totalPixels * 4);
 
-          for (let i = 0; i < imagemResultanteSuavizada.length; i++) {
-            const idxRGBA = i * 4;
-            if (imagemResultanteSuavizada[i] === 0) {
-              pixelsFissura++;
-              dadosRGBA[idxRGBA] = 0;
-              dadosRGBA[idxRGBA + 1] = 255;
-              dadosRGBA[idxRGBA + 2] = 0;
-              dadosRGBA[idxRGBA + 3] = 255;
-            } else {
-              dadosRGBA[idxRGBA] = dadosImagem.data[idxRGBA];
-              dadosRGBA[idxRGBA + 1] = dadosImagem.data[idxRGBA + 1];
-              dadosRGBA[idxRGBA + 2] = dadosImagem.data[idxRGBA + 2];
-              dadosRGBA[idxRGBA + 3] = 255;
+          dadosRGBA.set(dadosImagem.data);
+
+          for (let i = 0; i < alturaSuavizada; i++) {
+            for (let j = 0; j < larguraSuavizada; j++) {
+              const idxSuavizado = i * larguraSuavizada + j;
+              if (imagemSuavizada[idxSuavizado] === 0) {
+                pixelsFissura++;
+                // +2 para compensar a borda removida pelo filtro 5x5
+                const idxOriginal =
+                  ((i + 2) * regiaoSelecionada.largura + (j + 2)) * 4;
+                dadosRGBA[idxOriginal] = 0; // R
+                dadosRGBA[idxOriginal + 1] = 255; // G
+                dadosRGBA[idxOriginal + 2] = 0; // B
+                dadosRGBA[idxOriginal + 3] = 255; // A
+              }
             }
           }
 
           const orientacao = identificarOrientacaoFissura(
-            imagemResultanteSuavizada,
-            regiaoSelecionada.largura,
-            regiaoSelecionada.altura
+            imagemSuavizada,
+            larguraSuavizada,
+            alturaSuavizada
           );
+
           const novaImagemRegiaoSelecionada = new ImageData(
             dadosRGBA,
             regiaoSelecionada.largura,
             regiaoSelecionada.altura
           );
+
           contexto.putImageData(
             novaImagemRegiaoSelecionada,
             regiaoSelecionada.x,

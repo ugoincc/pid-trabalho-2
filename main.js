@@ -1,4 +1,13 @@
-import { realcarFissura, escala_de_cinza,TransformadaBottomHatImg,TransformarRgbParaHsvImg,AplicarHSVImg,LimiarizacaoSimplesImg, realcarFissuraVerde, realcarFissuraVerdeComSuavizacao } from "./preProcessamento.js";
+import {
+  realcarFissura,
+  escala_de_cinza,
+  TransformadaBottomHatImg,
+  TransformarRgbParaHsvImg,
+  AplicarHSVImg,
+  LimiarizacaoSimplesImg,
+  realcarFissuraVerde,
+  realcarFissuraVerdeComSuavizacao,
+} from "./preProcessamento.js";
 
 import "./common.js";
 
@@ -19,10 +28,10 @@ function handleThresholdChange(selectedFunction) {
   if (thresholdTimeout) {
     clearTimeout(thresholdTimeout);
   }
-  
+
   // Armazena a função pendente
   pendingFunction = selectedFunction;
-  
+
   // Define um novo timeout com delay de 300ms
   thresholdTimeout = setTimeout(() => {
     if (pendingFunction && !currentProcessing) {
@@ -39,10 +48,10 @@ async function executeFunction(selectedFunction) {
   if (currentProcessing) {
     return;
   }
-  
+
   currentProcessing = true;
   clearPreview();
-  
+
   try {
     switch (selectedFunction) {
       case "fun1":
@@ -67,10 +76,9 @@ async function executeFunction(selectedFunction) {
         await realcarFissuraVerde();
         break;
       case "fun8":
-        await realcarFissuraVerdeComSuavizacao()
+        await realcarFissuraVerdeComSuavizacao();
       default:
         const msg = document.createElement("p");
-        msg.textContent = "Nenhuma função selecionada.";
         const preview = document.querySelector(".single-output");
         preview.appendChild(msg);
     }
@@ -89,7 +97,7 @@ async function executeFunction(selectedFunction) {
 // Escuta mudanças no threshold com debouncing
 document.addEventListener("thresholdChanged", (event) => {
   const functionSelector = document.querySelector("#functionSelector");
-  
+
   // Aplica debouncing para fun2 (realcarFissura) e fun6 (LimiarizacaoSimplesImg) que usam threshold
   if (functionSelector.value === "fun2") {
     handleThresholdChange("fun2");
@@ -106,7 +114,7 @@ document.addEventListener("functionChanged", (event) => {
     thresholdTimeout = null;
     pendingFunction = null;
   }
-  
+
   handleImageFunction(event.detail);
 });
 
