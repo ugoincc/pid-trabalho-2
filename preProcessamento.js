@@ -57,11 +57,14 @@ export function LimiarizacaoSimplesImg() {
     const dadosCinza = converte_escala_de_cinza(dadosImagem);
 
     // Aplica limiarização simples
-    const dadosLimiarizados = limiarizacao_simples(dadosCinza, currentThreshold);
+    const dadosLimiarizados = limiarizacao_simples(
+      dadosCinza,
+      currentThreshold
+    );
 
     // Aplica os valores limiarizados à imagem RGBA
     for (let i = 0, j = 0; i < dadosImagem.data.length; i += 4, j++) {
-      dadosImagem.data[i] = dadosLimiarizados[j];     // R
+      dadosImagem.data[i] = dadosLimiarizados[j]; // R
       dadosImagem.data[i + 1] = dadosLimiarizados[j]; // G
       dadosImagem.data[i + 2] = dadosLimiarizados[j]; // B
       // Mantém o canal Alpha
@@ -192,7 +195,7 @@ function transformadaBottomHat(dadosCinza, largura, altura) {
   return resultado;
 }
 
-export function TransformadaBottomHatImg(){
+export function TransformadaBottomHatImg() {
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
   const contexto = tela.getContext("2d");
@@ -219,9 +222,8 @@ export function TransformadaBottomHatImg(){
       dadosImagem.data[i] = invertido;
       dadosImagem.data[i + 1] = invertido;
       dadosImagem.data[i + 2] = invertido;
-  // Mantém o canal Alpha (dadosImagem.data[i + 3]) sem alterações
-}
-
+      // Mantém o canal Alpha (dadosImagem.data[i + 3]) sem alterações
+    }
 
     contexto.putImageData(dadosImagem, 0, 0);
     preview.appendChild(tela);
@@ -232,7 +234,6 @@ export function TransformadaBottomHatImg(){
     containerDownload.appendChild(linkDownload);
   };
 }
-
 
 //---------------------------------------------------------------//
 //-------------------------Segundo Fluxo-------------------------//
@@ -296,9 +297,9 @@ export function TransformarRgbParaHsvImg() {
       // Vamos usar o canal V para criar imagem em tons de cinza
       const v = Math.round(hsv.v * 255);
 
-      dadosSaida[i] = v;       // R
-      dadosSaida[i + 1] = v;   // G
-      dadosSaida[i + 2] = v;   // B
+      dadosSaida[i] = v; // R
+      dadosSaida[i + 1] = v; // G
+      dadosSaida[i + 2] = v; // B
       dadosSaida[i + 3] = dadosImagem.data[i + 3]; // mantém Alpha
     }
 
@@ -363,16 +364,22 @@ export function AplicarHSVImg() {
     const limiarS = 0.5;
     const limiarV = 0.5;
 
-    const mascaraHSV = aplicarHSV(dadosImagem, largura, altura, limiarS, limiarV);
+    const mascaraHSV = aplicarHSV(
+      dadosImagem,
+      largura,
+      altura,
+      limiarS,
+      limiarV
+    );
 
     // Construir imagem RGBA a partir da máscara (preto e branco)
     const dadosSaida = new Uint8ClampedArray(dadosImagem.data.length);
     for (let i = 0, j = 0; i < dadosSaida.length; i += 4, j++) {
       const val = mascaraHSV[j];
-      dadosSaida[i] = val;       // R
-      dadosSaida[i + 1] = val;   // G
-      dadosSaida[i + 2] = val;   // B
-      dadosSaida[i + 3] = 255;   // Alpha totalmente opaco
+      dadosSaida[i] = val; // R
+      dadosSaida[i + 1] = val; // G
+      dadosSaida[i + 2] = val; // B
+      dadosSaida[i + 3] = 255; // Alpha totalmente opaco
     }
 
     const novaImagem = new ImageData(dadosSaida, largura, altura);
@@ -397,25 +404,30 @@ export function combinarImagens(dadosLimiarizados, imagemHSV) {
   return resultado;
 }
 
-export function calcularPorcentagemAreaFissura(imagemResultante, largura, altura) {
+export function calcularPorcentagemAreaFissura(
+  imagemResultante,
+  largura,
+  altura
+) {
   let pixelsFissura = 0;
   const totalPixels = largura * altura;
-  
+
   // Conta os pixels que representam fissura (pixels brancos/claros)
   for (let i = 0; i < imagemResultante.length; i++) {
     // Considera como fissura pixels com valor próximo ao branco (acima de um limiar)
-    if (imagemResultante[i] > 127) { // Limiar de 127 (meio da escala 0-255)
+    if (imagemResultante[i] > 127) {
+      // Limiar de 127 (meio da escala 0-255)
       pixelsFissura++;
     }
   }
-  
+
   // Calcula a porcentagem
   const porcentagem = (pixelsFissura / totalPixels) * 100;
-  
+
   return {
     pixelsFissura: pixelsFissura,
     totalPixels: totalPixels,
-    porcentagem: porcentagem.toFixed(2)
+    porcentagem: porcentagem.toFixed(2),
   };
 }
 
@@ -488,11 +500,14 @@ export function realcarFissura() {
 
 // Função separada para identificar orientação
 function identificarOrientacaoFissura(imagemResultante, largura, altura) {
-  let minX = largura, maxX = 0;
-  let minY = altura, maxY = 0;
+  let minX = largura,
+    maxX = 0;
+  let minY = altura,
+    maxY = 0;
 
   for (let i = 0; i < imagemResultante.length; i++) {
-    if (imagemResultante[i] === 0) { // pixel de fissura
+    if (imagemResultante[i] === 0) {
+      // pixel de fissura
       const x = i % largura;
       const y = Math.floor(i / largura);
       if (x < minX) minX = x;
@@ -516,8 +531,12 @@ function identificarOrientacaoFissura(imagemResultante, largura, altura) {
 
 let regiao_selecionada = null;
 
-function selecionarAreaAutomatico(tela, contexto, imagem, processarAreaSelecionada) {
-
+function selecionarAreaAutomatico(
+  tela,
+  contexto,
+  imagem,
+  processarAreaSelecionada
+) {
   let selecionando = false;
   let eixoX = 0;
   let eixoY = 0;
@@ -527,8 +546,14 @@ function selecionarAreaAutomatico(tela, contexto, imagem, processarAreaSeleciona
     const rect = tela.getBoundingClientRect();
     const escalaX = tela.width / rect.width;
     const escalaY = tela.height / rect.height;
-    const x = Math.max(0, Math.min(tela.width, Math.floor((evento.clientX - rect.left) * escalaX)));
-    const y = Math.max(0, Math.min(tela.height, Math.floor((evento.clientY - rect.top) * escalaY)));
+    const x = Math.max(
+      0,
+      Math.min(tela.width, Math.floor((evento.clientX - rect.left) * escalaX))
+    );
+    const y = Math.max(
+      0,
+      Math.min(tela.height, Math.floor((evento.clientY - rect.top) * escalaY))
+    );
     return { x, y };
   }
 
@@ -581,7 +606,9 @@ function selecionarAreaAutomatico(tela, contexto, imagem, processarAreaSeleciona
       // redesenha imagem e volta sem processar
       contexto.clearRect(0, 0, tela.width, tela.height);
       contexto.drawImage(imagem, 0, 0);
-      console.warn("A região selecionada é muito pequena — selecione uma área maior.");
+      console.warn(
+        "A região selecionada é muito pequena — selecione uma área maior."
+      );
       return;
     }
 
@@ -663,20 +690,37 @@ export function realcarFissuraVerde() {
           const dadosCinza = converte_escala_de_cinza(dadosImagem);
 
           // -------------------- Aplicando a transformada de bottom hat ------------------------------ //
-          const dadosTransformadaHat = transformadaBottomHat(dadosCinza, regiaoSelecionada.largura, regiaoSelecionada.altura);
+          const dadosTransformadaHat = transformadaBottomHat(
+            dadosCinza,
+            regiaoSelecionada.largura,
+            regiaoSelecionada.altura
+          );
 
           // -------------------- Aplicando limiarizacao a imagem ------------------------------------- //
-          const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat, currentThreshold);
+          const dadosLimiarizados = limiarizacao_simples(
+            dadosTransformadaHat,
+            currentThreshold
+          );
 
           // -------------------- Transformando a imagem original de RGB para HSV --------------------- //
-          const imagemHSV = aplicarHSV(dadosImagemCopia, regiaoSelecionada.largura, regiaoSelecionada.altura, 0.6, 0.6);
+          const imagemHSV = aplicarHSV(
+            dadosImagemCopia,
+            regiaoSelecionada.largura,
+            regiaoSelecionada.altura,
+            0.6,
+            0.6
+          );
 
           // -------------------- Combinando a imagem 1 (transformada de hat) e a imagem 2 (HSV) ------ //
-          const imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);
+          const imagemResultante = combinarImagens(
+            dadosLimiarizados,
+            imagemHSV
+          );
 
           // calculo de fissura e criação RGBA
           let pixelsFissura = 0;
-          const totalPixels = regiaoSelecionada.largura * regiaoSelecionada.altura;
+          const totalPixels =
+            regiaoSelecionada.largura * regiaoSelecionada.altura;
           const dadosRGBA = new Uint8ClampedArray(totalPixels * 4);
 
           for (let i = 0; i < imagemResultante.length; i++) {
@@ -695,12 +739,27 @@ export function realcarFissuraVerde() {
             }
           }
 
-          const orientacao = identificarOrientacaoFissura(imagemResultante, regiaoSelecionada.largura, regiaoSelecionada.altura);
-          const novaImagemRegiaoSelecionada = new ImageData(dadosRGBA, regiaoSelecionada.largura, regiaoSelecionada.altura);
-          contexto.putImageData(novaImagemRegiaoSelecionada, regiaoSelecionada.x, regiaoSelecionada.y);
+          const orientacao = identificarOrientacaoFissura(
+            imagemResultante,
+            regiaoSelecionada.largura,
+            regiaoSelecionada.altura
+          );
+          const novaImagemRegiaoSelecionada = new ImageData(
+            dadosRGBA,
+            regiaoSelecionada.largura,
+            regiaoSelecionada.altura
+          );
+          contexto.putImageData(
+            novaImagemRegiaoSelecionada,
+            regiaoSelecionada.x,
+            regiaoSelecionada.y
+          );
 
-          const containerDownload = document.querySelector(".download-container") || document.body;
-          const infoAnterior = document.querySelector(".resultado-fissura-verde");
+          const containerDownload =
+            document.querySelector(".download-container") || document.body;
+          const infoAnterior = document.querySelector(
+            ".resultado-fissura-verde"
+          );
           if (infoAnterior) infoAnterior.remove();
 
           const divResultado = document.createElement("div");
@@ -728,18 +787,30 @@ export function realcarFissuraVerde() {
               ${porcentagem.toFixed(2)}%
             </div>
             <div style="font-size: 14px; margin-top: 10px;">
-              <p><strong>${pixelsFissura.toLocaleString('pt-BR')}</strong> pixels de fissura</p>
-              <p><strong>${totalPixels.toLocaleString('pt-BR')}</strong> pixels totais</p>
+              <p><strong>${pixelsFissura.toLocaleString(
+                "pt-BR"
+              )}</strong> pixels de fissura</p>
+              <p><strong>${totalPixels.toLocaleString(
+                "pt-BR"
+              )}</strong> pixels totais</p>
               <p><strong>Orientação:</strong> ${orientacao}</p>
             </div>
           `;
 
-          const linkDownload = createDownloadLink(tela, "imagem_fissura_verde_destacada.png");
-          containerDownload.insertBefore(divResultado, containerDownload.firstChild);
+          const linkDownload = createDownloadLink(
+            tela,
+            "imagem_fissura_verde_destacada.png"
+          );
+          containerDownload.insertBefore(
+            divResultado,
+            containerDownload.firstChild
+          );
           containerDownload.appendChild(linkDownload);
         } catch (err) {
           console.error("Erro ao processar Regiao Selecionada", err);
-          alert("Ocorreu um erro durante o processamento. Veja o console para detalhes.");
+          alert(
+            "Ocorreu um erro durante o processamento. Veja o console para detalhes."
+          );
         } finally {
           mostraProcessando(false);
         }
@@ -747,7 +818,12 @@ export function realcarFissuraVerde() {
     }
 
     // inicia selecao e faz processamento automatico ao soltar
-    selecionarAreaAutomatico(tela, contexto, imagem, aplicarFiltroRegiaoSelecionada);
+    selecionarAreaAutomatico(
+      tela,
+      contexto,
+      imagem,
+      aplicarFiltroRegiaoSelecionada
+    );
   };
 }
 
@@ -809,10 +885,10 @@ function aplicarFiltroMediana(imagemRGBA, largura, altura) {
 
       const idxResultado = (i * novaLargura + j) * 4;
       // Aplico mediana nos 3 canais para manter cor
-      resultadoMediana[idxResultado] = mediana;        // vermelho
-      resultadoMediana[idxResultado + 1] = mediana;    // verde
-      resultadoMediana[idxResultado + 2] = mediana;    // azul
-      resultadoMediana[idxResultado + 3] = 255;        // alfa fixo
+      resultadoMediana[idxResultado] = mediana; // vermelho
+      resultadoMediana[idxResultado + 1] = mediana; // verde
+      resultadoMediana[idxResultado + 2] = mediana; // azul
+      resultadoMediana[idxResultado + 3] = 255; // alfa fixo
     }
   }
 
@@ -879,23 +955,44 @@ export function realcarFissuraVerdeComSuavizacao() {
           const dadosCinza = converte_escala_de_cinza(dadosImagem);
 
           // -------------------- Aplicando a transformada de bottom hat ------------------------------ //
-          const dadosTransformadaHat = transformadaBottomHat(dadosCinza, regiaoSelecionada.largura, regiaoSelecionada.altura);
+          const dadosTransformadaHat = transformadaBottomHat(
+            dadosCinza,
+            regiaoSelecionada.largura,
+            regiaoSelecionada.altura
+          );
 
           // -------------------- Aplicando limiarizacao a imagem ------------------------------------- //
-          const dadosLimiarizados = limiarizacao_simples(dadosTransformadaHat, currentThreshold);
+          const dadosLimiarizados = limiarizacao_simples(
+            dadosTransformadaHat,
+            currentThreshold
+          );
 
           // -------------------- Transformando a imagem original de RGB para HSV --------------------- //
-          const imagemHSV = aplicarHSV(dadosImagemCopia, regiaoSelecionada.largura, regiaoSelecionada.altura, 0.6, 0.6);
+          const imagemHSV = aplicarHSV(
+            dadosImagemCopia,
+            regiaoSelecionada.largura,
+            regiaoSelecionada.altura,
+            0.6,
+            0.6
+          );
 
           // -------------------- Combinando a imagem 1 (transformada de hat) e a imagem 2 (HSV) ------ //
-          const imagemResultante = combinarImagens(dadosLimiarizados, imagemHSV);
+          const imagemResultante = combinarImagens(
+            dadosLimiarizados,
+            imagemHSV
+          );
 
           // -------------------- Suavizando a imagem com filtro da mediana -------------------------- //
-          const imagemResultanteSuavizada = aplicarFiltroMediana(imagemResultante, regiaoSelecionada.largura, regiaoSelecionada.altura);
-           
+          const imagemResultanteSuavizada = aplicarFiltroMediana(
+            imagemResultante,
+            regiaoSelecionada.largura,
+            regiaoSelecionada.altura
+          );
+
           // calculo de fissura e criação RGBA
           let pixelsFissura = 0;
-          const totalPixels = regiaoSelecionada.largura * regiaoSelecionada.altura;
+          const totalPixels =
+            regiaoSelecionada.largura * regiaoSelecionada.altura;
           const dadosRGBA = new Uint8ClampedArray(totalPixels * 4);
 
           for (let i = 0; i < imagemResultanteSuavizada.length; i++) {
@@ -914,12 +1011,27 @@ export function realcarFissuraVerdeComSuavizacao() {
             }
           }
 
-          const orientacao = identificarOrientacaoFissura(imagemResultanteSuavizada, regiaoSelecionada.largura, regiaoSelecionada.altura);
-          const novaImagemRegiaoSelecionada = new ImageData(dadosRGBA, regiaoSelecionada.largura, regiaoSelecionada.altura);
-          contexto.putImageData(novaImagemRegiaoSelecionada, regiaoSelecionada.x, regiaoSelecionada.y);
+          const orientacao = identificarOrientacaoFissura(
+            imagemResultanteSuavizada,
+            regiaoSelecionada.largura,
+            regiaoSelecionada.altura
+          );
+          const novaImagemRegiaoSelecionada = new ImageData(
+            dadosRGBA,
+            regiaoSelecionada.largura,
+            regiaoSelecionada.altura
+          );
+          contexto.putImageData(
+            novaImagemRegiaoSelecionada,
+            regiaoSelecionada.x,
+            regiaoSelecionada.y
+          );
 
-          const containerDownload = document.querySelector(".download-container") || document.body;
-          const infoAnterior = document.querySelector(".resultado-fissura-verde");
+          const containerDownload =
+            document.querySelector(".download-container") || document.body;
+          const infoAnterior = document.querySelector(
+            ".resultado-fissura-verde"
+          );
           if (infoAnterior) infoAnterior.remove();
 
           const divResultado = document.createElement("div");
@@ -947,18 +1059,30 @@ export function realcarFissuraVerdeComSuavizacao() {
               ${porcentagem.toFixed(2)}%
             </div>
             <div style="font-size: 14px; margin-top: 10px;">
-              <p><strong>${pixelsFissura.toLocaleString('pt-BR')}</strong> pixels de fissura</p>
-              <p><strong>${totalPixels.toLocaleString('pt-BR')}</strong> pixels totais</p>
+              <p><strong>${pixelsFissura.toLocaleString(
+                "pt-BR"
+              )}</strong> pixels de fissura</p>
+              <p><strong>${totalPixels.toLocaleString(
+                "pt-BR"
+              )}</strong> pixels totais</p>
               <p><strong>Orientação:</strong> ${orientacao}</p>
             </div>
           `;
 
-          const linkDownload = createDownloadLink(tela, "imagem_fissura_verde_destacada.png");
-          containerDownload.insertBefore(divResultado, containerDownload.firstChild);
+          const linkDownload = createDownloadLink(
+            tela,
+            "imagem_fissura_verde_destacada.png"
+          );
+          containerDownload.insertBefore(
+            divResultado,
+            containerDownload.firstChild
+          );
           containerDownload.appendChild(linkDownload);
         } catch (err) {
           console.error("Erro ao processar Regiao Selecionada", err);
-          alert("Ocorreu um erro durante o processamento. Veja o console para detalhes.");
+          alert(
+            "Ocorreu um erro durante o processamento. Veja o console para detalhes."
+          );
         } finally {
           mostraProcessando(false);
         }
@@ -966,7 +1090,11 @@ export function realcarFissuraVerdeComSuavizacao() {
     }
 
     // inicia selecao e faz processamento automatico ao soltar
-    selecionarAreaAutomatico(tela, contexto, imagem, aplicarFiltroRegiaoSelecionada);
+    selecionarAreaAutomatico(
+      tela,
+      contexto,
+      imagem,
+      aplicarFiltroRegiaoSelecionada
+    );
   };
 }
-
