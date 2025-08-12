@@ -6,6 +6,8 @@ import {
 } from "./common.js";
 
 // Funcao auxiliar para converter para escala de cinza usando formula luma
+// pre-condicao: 'dadosImagem' e um objeto ImageData com os dados da imagem.
+// pos-condicao: retorna um vetor (Uint8Array) com os valores em escala de cinza.
 export function converte_escala_de_cinza(dadosImagem) {
   const dados = dadosImagem.data;
   const largura = dadosImagem.width;
@@ -26,6 +28,8 @@ export function converte_escala_de_cinza(dadosImagem) {
 }
 
 // Funcao de limiarizacao simples
+// pre-condicao: 'dadosCinza' e um vetor de dados de imagem em escala de cinza (Uint8Array) e 'limiar' e o valor de limiarizacao.
+// pos-condicao: retorna um vetor (Uint8ClampedArray) onde os valores acima do limiar sao 0 (fundo) e abaixo sao 255 (fissura).
 export function limiarizacao_simples(dadosCinza, limiar = 14) {
   const valorLimiar = Math.round(limiar);
   const resultado = new Uint8ClampedArray(dadosCinza.length);
@@ -37,6 +41,9 @@ export function limiarizacao_simples(dadosCinza, limiar = 14) {
   return resultado;
 }
 
+// Funcao para criar imagem com Limiarizacao Simples
+// pre-condicao: 'curFile' e um arquivo de imagem carregado.
+// pos-condicao: cria um canvas com a imagem limiarizada e adiciona ao preview.
 export function LimiarizacaoSimplesImg() {
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
@@ -84,6 +91,8 @@ export function LimiarizacaoSimplesImg() {
 }
 
 // Funcao de conversao para escala de cinza
+// pre-condicao: 'curFile' e um arquivo de imagem carregado.
+// pos-condicao: cria um canvas com a imagem em escala de cinza e adiciona ao preview.
 export function escala_de_cinza() {
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
@@ -119,6 +128,8 @@ export function escala_de_cinza() {
 }
 
 // Aplica a erosao em imagem dilatada
+// pre-condicao: 'imagem_dilatada' e um vetor de dados de imagem dilatada (Uint8Array), 'largura' e 'altura' da imagem.
+// pos-condicao: retorna um vetor (Uint8ClampedArray) com os dados da imagem após a erosão.
 function aplicarErosao(imagem_dilatada, largura, altura) {
   const imagem_copia = new Uint8ClampedArray(imagem_dilatada); // copia de entrada
   const imagem_fechamento = new Uint8ClampedArray(imagem_dilatada.length); // imagem de saida
@@ -150,6 +161,8 @@ function aplicarErosao(imagem_dilatada, largura, altura) {
 }
 
 // Aplica a dilatacao para imagem e escala de cinza
+// pre-condicao: 'imagemCinza' e um vetor de dados de imagem em escala de cinza (Uint8Array), 'largura' e 'altura' da imagem.
+// pos-condicao: retorna um vetor (Uint8Array) com os dados da imagem após a dilatação.
 function aplicarDilatacao(imagemCinza, largura, altura) {
   const resultado = new Uint8Array(largura * altura);
 
@@ -179,6 +192,8 @@ function aplicarDilatacao(imagemCinza, largura, altura) {
 }
 
 // Funcao para realcar elementos mais claros que o fundo.
+// pre-condicao: 'dadosCinza' e um vetor de dados de imagem em escala de cinza (Uint8Array), 'largura' e 'altura' da imagem.
+// pos-condicao: retorna um vetor (Uint8ClampedArray) com os dados da imagem após a transformada Bottom Hat.
 function transformadaBottomHat(dadosCinza, largura, altura) {
   // Substituicao do valor de cada pixel pelo valor maximo dos vizinhos
   const imagem_dilatada = aplicarDilatacao(dadosCinza, largura, altura);
@@ -195,6 +210,9 @@ function transformadaBottomHat(dadosCinza, largura, altura) {
   return resultado;
 }
 
+// Funcao para aplicar a transformada Bottom Hat em uma imagem
+// pre-condicao: 'curFile' e um arquivo de imagem carregado.
+// pos-condicao: cria um canvas com a imagem transformada e adiciona ao preview.
 export function TransformadaBottomHatImg() {
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
@@ -240,6 +258,8 @@ export function TransformadaBottomHatImg() {
 //---------------------------------------------------------------//
 
 // Funcao para converter RGB para HSV
+// pre-condicao: 'r', 'g', 'b' sao valores RGB (0-255).
+// pos-condicao: retorna um objeto com os valores de Hue (h), Saturation (s) e Value (v).
 function rgbParaHsv(r, g, b) {
   r /= 255;
   g /= 255;
@@ -267,6 +287,9 @@ function rgbParaHsv(r, g, b) {
   return { h, s, v };
 }
 
+// Funcao para transformar imagem RGB para HSV
+// pre-condicao: 'curFile' e um arquivo de imagem carregado.
+// pos-condicao: cria um canvas com a imagem transformada para HSV e adiciona ao preview.
 export function TransformarRgbParaHsvImg() {
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
@@ -315,6 +338,8 @@ export function TransformarRgbParaHsvImg() {
 }
 
 // Aplica uma segmentacao baseada nos canais de Saturacao (S) e Valor (V) do espaço de cor HSV.
+// pre-condicao: 'dadosImagem' e um objeto ImageData com os dados da imagem, 'largura' e 'altura' da imagem.
+// pos-condicao: retorna um vetor (Uint8ClampedArray) com os dados da imagem após a segmentação.
 export function aplicarHSV(
   dadosImagem,
   largura,
@@ -344,6 +369,9 @@ export function aplicarHSV(
   return resultado; // máscara binária 0 ou 255
 }
 
+// Funcao para aplicar a segmentacao HSV em uma imagem
+// pre-condicao: 'curFile' e um arquivo de imagem carregado.
+// pos-condicao: cria um canvas com a imagem segmentada e adiciona ao preview.
 export function AplicarHSVImg() {
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
@@ -393,6 +421,9 @@ export function AplicarHSVImg() {
   };
 }
 
+// Combina duas imagens: uma com dados limiarizados e outra com dados HSV
+// pre-condicao: 'dadosLimiarizados' e um vetor de dados de imagem limiarizada , 'imagemHSV' e um vetor de dados de imagem HSV.
+// pos-condicao: retorna um vetor com os dados da imagem combinada.
 export function combinarImagens(dadosLimiarizados, imagemHSV) {
   const resultado = new Uint8ClampedArray(dadosLimiarizados.length);
 
@@ -432,6 +463,8 @@ export function calcularPorcentagemAreaFissura(
 }
 
 // Realca a fissura atraves da transformada de hat combinada com HSV
+// pre-condicao: 'curFile' e um arquivo de imagem carregado.
+// pos-condicao: cria um canvas com a imagem realçada e adiciona ao preview.
 export function realcarFissura() {
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
@@ -498,7 +531,9 @@ export function realcarFissura() {
   };
 }
 
-// Função separada para identificar orientação
+// Função separada para identificar orientação da fissura
+// pre-condicao: 'imagemResultante' e um vetor de dados de imagem resultante, 'largura' e 'altura' da imagem.
+// pos-condicao: retorna uma string indicando a orientação da fissura ("Horizontal", "Vertical" ou "Diagonal").
 function identificarOrientacaoFissura(imagemResultante, largura, altura) {
   let minX = largura,
     maxX = 0;
@@ -529,7 +564,7 @@ function identificarOrientacaoFissura(imagemResultante, largura, altura) {
   }
 }
 
-let regiao_selecionada = null; // pq????
+let regiao_selecionada = null; 
 
 function selecionarAreaAutomatico(
   tela,
@@ -630,6 +665,9 @@ function selecionarAreaAutomatico(
   tela.addEventListener("pointercancel", soltarCursor);
 }
 
+// Realca a fissura verde na imagem selecionada
+// pre-condicao: 'curFile' e um arquivo de imagem carregado.
+// pos-condicao: cria um canvas com a imagem realçada e adiciona ao preview.
 export function realcarFissuraVerde() {
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
@@ -880,6 +918,9 @@ function aplicarFiltroMedianaCinza(imagemCinza, largura, altura) {
   return { data: resultadoMediana, largura: novaLargura, altura: novaAltura };
 }
 
+// Realca a fissura verde com suavização usando filtro de mediana
+// pre-condicao: 'curFile' e um arquivo de imagem carregado.
+// pos-condicao: cria um canvas com a imagem realçada e adiciona ao preview.
 export function realcarFissuraVerdeComSuavizacao() {
   const tela = document.createElement("canvas");
   tela.classList.add("styled-canva");
@@ -917,6 +958,9 @@ export function realcarFissuraVerdeComSuavizacao() {
       }
     };
 
+    // Função para aplicar o filtro na região selecionada
+    // pre-condicao: 'regiaoSelecionada' e um objeto com as coordenadas e dimensões da região selecionada.
+    // pos-condicao: processa a região selecionada e exibe o resultado no canvas
     function aplicarFiltroRegiaoSelecionada(regiaoSelecionada) {
       // mostra indicador e espera tela atualizar para o usuário ver o retângulo
       mostraProcessando(true);
