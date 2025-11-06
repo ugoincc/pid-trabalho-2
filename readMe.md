@@ -1,93 +1,70 @@
-# Processamento de Imagens (HTML + JS)
+# Detector de Fissuras em Estruturas (PID)
+Este projeto é uma ferramenta web para Processamento de Imagens Digitais (PID), desenvolvida como um trabalho acadêmico para a UNIOSTE. O foco principal é a implementação de técnicas de visão computacional para a detecção e reconhecimento de fissuras em estruturas civis (concreto, alvenaria, etc.), baseando-se em uma abordagem de artigo científico.
 
-<strong>Autores:</strong>
-
+#### Autores:
 - [Hugo Cordeiro](https://github.com/ugoincc)
 - [Kelyton Lacerda](https://github.com/Kelyton21)
 - [Renan Batalha](https://github.com/renanBatalha)
 
-## Descrição
+#### Abordagem Científica
+O método implementado é baseado no artigo Health Monitoring of Civil Structures with Integrated UAV and Image Processing System, conforme resumido no documento Resumo-Artigo-PID.pdf.
 
-Este projeto demonstra filtros e técnicas de processamento de imagens usando Canvas em JavaScript puro.
+Técnicas simples de detecção de borda (como Sobel ou Canny) são muitas vezes imprecisas para esta tarefa, pois detectam não apenas as fissuras, mas também as bordas estruturais da imagem (janelas, cantos, etc.).
 
-Os filtros abordados neste trabalho são:
+Para solucionar isso, o projeto implementa um pipeline de filtro duplo para isolar com mais precisão as fissuras:
 
-1. Limiarização (Threshold)
-2. Escala de Cinza
-3. Passa-Alta básico
-4. Passa-Alta Alto reforço
-5. Passa-Baixa Média (Básico)
-6. Passa-Baixa Mediana
-7. Operador de Roberts
-8. Operador de Prewitt
-9. Operador de Sobel
-10. Tranformação Logarítmica
-11. Operações Aritméticas
-    a. Soma
-    b. Subtração
-    c. Multiplicação
-    d. Divisão
-12. Histograma (Escala de cinza)
-13. Equalização de Histograma
 
-## Estrutura
+### Filtro 1: Transformada Bottom-Hat
 
-As funções de filtro e manipulação de imagem estão separadas em módulos (i.e './scriptHugo') <i>main.js</i> contém o controlador para chamada das funções e <i>common.js</i> com as funções auxiliares para <i>inputs</i> e <i>download</i> das imagens processadas.
+A imagem é convertida para escala de cinza. Aplica-se a transformada morfológica "Bottom-Hat", que é excelente para destacar elementos pequenos e escuros sobre um fundo claro (exatamente como uma fissura). Uma limiarização (Thresholding) é aplicada para criar uma máscara binária.
 
-Documentação e informações sobre cada módulo são encontrados nos arquivos <i>'funcoes[nome].md'</i>.
+### Filtro 2: Limiarização HSV
 
-    /
-    ├─ index.html
-    ├─ css/
-    │ └─ styles.css
-    ├─ common.js
-    ├─ main.js
-    ├─ scriptKelyton.js
-    ├─ funcoesKelyton.md
-    ├─ scriptRenan.js
-    ├─ funcoesRenan.md
-    ├─ scriptHugo.js
-    ├─ funcoesHugo.md
-    └─ readMe.md
+A imagem original é convertida para o espaço de cores HSV (Hue, Saturation, Value). Aplica-se uma limiarização para detectar regiões de baixa saturação (S) e baixo valor (V), características comuns de sombras e fissuras. A imagem final de fissura detectada é o resultado da combinação (AND lógico) das duas máscaras binárias, aumentando significativamente a precisão.
 
-## Como rodar
+## Funcionalidades Implementadas
+#### A interface permite ao usuário carregar uma imagem e aplicar três operações distintas:
 
-Não abrir index.html diretamente, navegadores bloqueiam por padrão a leitura de pixels quando a imagem vem de `file://`. Por isso use um servidor HTTP local:
+Escala de Cinza - Uma conversão básica para escala de cinza (luma).
 
-### 1. Python 3
+Destacar Fissura - Implementa o pipeline duplo (Bottom-Hat + HSV) descrito acima  usando JavaScript puro.
 
-```bash
-# no diretório do projeto:
+O resultado é a máscara binária final que mostra as fissuras detectadas em branco (ou preto, dependendo da lógica de limiarização).
+
+### Reconhecer Fissuras (com OpenCV.js)
+
+Esta é a funcionalidade mais avançada. Primeiro, ela gera a mesma máscara binária da função anterior. Em seguida, carrega dinamicamente o OpenCV.js para analisar essa máscara. Utiliza cv.findContours para identificar cada região de fissura individualmente. Filtra os contornos por propriedades (como área mínima, perímetro) para reduzir ruído. Desenha um retângulo (Bounding Box) e um rótulo (ex: "F1", "F2") sobre a imagem original para cada fissura validada.
+
+## Tecnologias Utilizadas
+<b>HTML5 / CSS3:</b> Estrutura e estilo da interface.
+
+<b>JavaScript (ES Modules):</b> Manipulação do DOM e implementação pura dos algoritmos de pré-processamento (preProcessamento.js).
+
+<b>OpenCV.js:</b> Biblioteca de visão computacional (carregada dinamicamente) para análise de contornos, formas e desenho dos resultados (reconhecimentoDeFissura.js).
+
+## Como Executar
+<b>Atenção!</b> Este projeto não funciona abrindo o index.html diretamente do navegador (via file://).
+
+Devido às políticas de segurança do navegador (CORS), o JavaScript não consegue carregar os módulos ou a imagem no canvas. Você precisa rodar o projeto a partir de um servidor HTTP local.
+
+A forma mais fácil de fazer isso é usando Python (se você o tiver instalado):
+
+Navegue até a pasta do projeto no seu terminal.
+
+Execute o comando:
+
+```
+### Para Python 3
 python3 -m http.server 8000
-
-# acesse em: http://localhost:8000
 ```
 
-### 2. Node.js
+Abra o navegador e acesse: http://localhost:8000
 
-### no diretório do projeto:
+Alternativamente, se você usa Node.js, pode usar o pacote serve:
+```
+### Instale (apenas uma vez)
+npm install -g serve
 
+### Rode na pasta do projeto
 npx serve .
-
-### abra no navegador:
-
-http://localhost:5000 (ou a porta indicada pelo serve no console)
-
-### 3. http-server (Node.js, instalação global)
-
-npm install -g http-server
-
-### depois:
-
-http-server -c-1
-
-### visite:
-
-http://localhost:8080
-
-### 4. Live Server (VS Code)
-
-1 - Abra a pasta no VS Code<br/>
-2 - Instale a extensão Live Server<br/>
-3 - Clique em "Go Live" no canto inferior direito<br/>
-4 - O navegador abrirá com a URL do servidor
+```
